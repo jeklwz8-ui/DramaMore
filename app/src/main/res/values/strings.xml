@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">DramaMore</string>
+    <string name="s_follow">追剧</string>
+    <string name="s_recommend">推荐</string>
+    <string name="s_home">首页</string>
+    <string name="s_me">我的</string>
+    <string name="s_eps">集</string>
+    <string name="s_search_short">搜索短剧</string>
+    <string name="s_search">搜索</string>
+    <string name="s_hot_short">热播短剧</string>
+    <string name="s_more">更多</string>
+    <string name="s_my_collect_shorts">我的追剧</string>
+    <string name="s_saw_num">已观看到</string>
+</resources>

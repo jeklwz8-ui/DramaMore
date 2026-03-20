@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="130dp"
+            android:layout_height="28dp"
+            android:background="@drawable/bg_ffa741_fa2f13_round"
+            android:gravity="center"
+            android:text="Free for members"
+            android:textColor="@android:color/white"
+            android:textSize="12sp" />
+
+        <TextView
+            android:layout_width="130dp"
+            android:layout_height="28dp"
+            android:layout_marginLeft="12dp"
+            android:background="@drawable/bg_555555_round"
+            android:gravity="center"
+            android:text="Other button"
+            android:textColor="@android:color/white"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+</FrameLayout>

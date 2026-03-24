@@ -1,10 +1,12 @@
 package com.dramamore.shorts.yanqin.activity;
 
+import android.graphics.Color;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 
@@ -13,7 +15,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import com.dramamore.shorts.yanqin.fragment.FollowFragment;
 import com.dramamore.shorts.yanqin.fragment.HomeFragment;
-import com.dramamore.shorts.yanqin.fragment.ProfileFragment;
+import com.dramamore.shorts.yanqin.fragment.MineFragment;
 import com.dramamore.shorts.yanqin.fragment.RecommendFragment;
 import com.dramamore.shorts.yanqin.utils.FragmentUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
@@ -25,6 +27,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 建议在 onCreate 顶部调用
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+// 设置状态栏颜色为透明
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
         setContentView(R.layout.activity_main);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -45,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
         homeFragment = new HomeFragment();
         recommendFragment = new RecommendFragment();
         followFragment = new FollowFragment();
-        profileFragment = new ProfileFragment();
+        profileFragment = new MineFragment();
 
         BottomNavigationView navView = findViewById(R.id.bottom_navigation);
         navView.setItemIconTintList(null);
@@ -63,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.nav_follow) {
                 fragment = followFragment != null ? followFragment : new FollowFragment();
             } else if (itemId == R.id.nav_profile) {
-                fragment = profileFragment != null ? profileFragment : new ProfileFragment();
+                fragment = profileFragment != null ? profileFragment : new MineFragment();
             }
 
             return FragmentUtils.switchFragment(MainActivity.this,fragment);

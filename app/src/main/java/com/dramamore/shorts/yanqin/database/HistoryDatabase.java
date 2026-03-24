@@ -7,12 +7,14 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
 import com.dramamore.shorts.yanqin.dao.FollowDao;
+import com.dramamore.shorts.yanqin.dao.HistoryDao;
 import com.dramamore.shorts.yanqin.entity.FollowDaoEntity;
+import com.dramamore.shorts.yanqin.entity.HistoryDaoEntity;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Database(entities = {FollowDaoEntity.class}, version = 1, exportSchema = false)
+@Database(entities = {HistoryDaoEntity.class}, version = 1, exportSchema = false)
 public abstract class HistoryDatabase extends RoomDatabase {
 
     private static volatile HistoryDatabase INSTANCE;
@@ -20,7 +22,7 @@ public abstract class HistoryDatabase extends RoomDatabase {
     public static final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     // 关联你的 Dao
-    public abstract FollowDao followDao();
+    public abstract HistoryDao historyDao();
 
     // 获取单例的方法
     public static HistoryDatabase getDatabase(final Context context) {

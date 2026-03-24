@@ -11,31 +11,23 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.bytedance.sdk.shortplay.api.PSSDK;
-import com.bytedance.sdk.shortplay.api.ShortPlay;
 import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.adapter.FollowListAdapter;
-import com.dramamore.shorts.yanqin.adapter.GridSpacingItemDecoration;
 import com.dramamore.shorts.yanqin.adapter.LinearSpacingItemDecoration;
 import com.dramamore.shorts.yanqin.dao.FollowDao;
 import com.dramamore.shorts.yanqin.database.FollowDatabase;
 import com.dramamore.shorts.yanqin.entity.FollowDaoEntity;
-import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
-import com.dramamore.shorts.yanqin.utils.ShortUtils;
-import com.google.gson.Gson;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class FollowFragment extends Fragment {
     private static final String TAG = "FollowFragment";
     private int currentPage = 1;
     private boolean isLoading = false, hasMore = false;
+    private final int PAGE_SIZE = 20; // 每页数量
     private FollowListAdapter adapter;
     private FollowDao followDao;
-    private final int PAGE_SIZE = 20; // 每页数量
 
     @Nullable
     @Override
@@ -105,7 +97,7 @@ public class FollowFragment extends Fragment {
     private void loadMoreData() {
         isLoading = true;
         // 在子线程中执行数据库操作
-        FollowDatabase.databaseWriteExecutor.execute(new Runnable() {
+        FollowDatabase.executor.execute(new Runnable() {
             @Override
             public void run() {
                 // 1. 获取当前页数据

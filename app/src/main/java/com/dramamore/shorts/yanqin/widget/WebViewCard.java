@@ -5,9 +5,11 @@ import android.content.Context;
 import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.ActionMode;
+import android.view.GestureDetector;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -19,18 +21,14 @@ import android.webkit.WebViewClient;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.dramamore.shorts.yanqin.utils.AppUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
 
 import java.io.File;
 
 public class WebViewCard extends WebView {
     private String TAG = "WebViewCard";
-    public static final String HOME_PAGE_KEY = "home_page_key";
-    public static final String OSS_ENABLE_KEY = "oss_enable_key";
-    public static final String UPDATE_TIMELAG_KEY = "update_timelag_key";
-    public static final String DEFAULT_HTML = "file:///android_asset/default.html";
-    private String homePage = "https://nos6.nyanwn.com";
-    private boolean mIsLoaded, mDidError;
+    public static final String DEFAULT_HTML = "file:///android_asset/protocol.html";
 
     public WebViewCard(@NonNull Context context) {
         super(context);
@@ -47,25 +45,11 @@ public class WebViewCard extends WebView {
         init();
     }
 
-    private String mCachedPagePath;
-
     private void init() {
         initWebViewSettings();
         setFocusable(true);
 
-        loadUrl(homePage);
-    }
-
-    private boolean mIsIntercept;
-
-    /**
-     * 设置触摸事件是否拦截
-     *
-     * @param isIntercept
-     */
-    public void requestIntercept(boolean isIntercept) {
-        setEnabled(!isIntercept);
-        mIsIntercept = isIntercept;
+        loadUrl(DEFAULT_HTML);
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -107,99 +91,6 @@ public class WebViewCard extends WebView {
         // 禁用滚动条（让卡片看起来更像原生 UI）
         setHorizontalScrollBarEnabled(false);
         setVerticalScrollBarEnabled(false);
-
-        setWebChromeClient(new WebChromeClient());
-        setWebViewClient(new WebViewClient() {
-
-            // 兼容 API 24 以上
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                String url = request.getUrl().toString();
-                Logs.i(TAG, "shouldOverrideUrlLoading-url=" + url);
-                return true;
-            }
-
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                // 1. 过滤掉无意义的初始空白页
-                if (url == null || url.equals("about:blank")) {
-                    return;
-                }
-                Logs.i(TAG, "onPageFinished-url=" + url + ",mIsLoaded=" + mIsLoaded + ",mDidError=" + mDidError);
-                if (!mDidError) {
-                    mIsLoaded = true;
-                    if (url.equals(homePage)) {
-                        view.saveWebArchive(mCachedPagePath);
-                    } else if (url.equals(DEFAULT_HTML)) {
-                        mIsLoaded = false;
-                    }
-                } else {
-                    // 重置错误标记，方便下次尝试
-                    mDidError = false;
-                    mIsLoaded = false;
-                }
-            }
-
-            @Override
-            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                super.onReceivedError(view, request, error);
-                Logs.i(TAG, "onReceivedError-url=" + view.getUrl() + ",request.url=" + request.getUrl() + " ,ErrorCode=" + error.getErrorCode() + " ,Descript=" + error.getDescription());
-                int errorCode = error.getErrorCode();
-                if(errorCode ==-2){
-                    Logs.i(TAG, "onReceivedError-loadDefaultHtml-request.url=" + request.getUrl());
-                    loadDefaultHtml();
-                    mDidError = true;
-                }
-
-            }
-        });
-    }
-
-    private void loadDefaultHtml() {
-        loadUrl(DEFAULT_HTML);
-    }
-
-    // Android 6.0 及以上版本调用
-    @Override
-    public ActionMode startActionMode(ActionMode.Callback callback, int type) {
-        return super.startActionMode(new MyActionModeCallback(), type);
-    }
-
-    private class MyActionModeCallback implements ActionMode.Callback {
-        @Override
-        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-            // 返回 false 直接不创建菜单，或者在此处 menu.clear()
-            Logs.i(TAG, "onCreateActionMode-mIsIntercept=" + mIsIntercept);
-            return !mIsIntercept;
-        }
-
-        @Override
-        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-            return false;
-        }
-
-        @Override
-        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-            return false;
-        }
-
-        @Override
-        public void onDestroyActionMode(ActionMode mode) {
-        }
-    }
-
-    @Override
-    public void reload() {
-        loadUrl(homePage);//都是加载homepage
-    }
-
-    @Override
-    protected void onScrollChanged(int l, int t, int oldl, int oldt) {
-        super.onScrollChanged(l, t, oldl, oldt);
-        Logs.i(TAG, "onScrollChanged-l=" + l + ",t=" + t + ",oldl=" + oldl + ",oldt=" + oldt);
-        if (l != 0) {
-            scrollTo(0, t); // 强制横向位置永远为 0
-        }
     }
 
     @Override
@@ -214,19 +105,25 @@ public class WebViewCard extends WebView {
         return super.dispatchKeyEvent(event);
     }
 
-    @Override
-    protected void onWindowVisibilityChanged(int visibility) {
-        super.onWindowVisibilityChanged(visibility);
-        if (visibility == View.VISIBLE) {
-            if (!mIsLoaded && !TextUtils.isEmpty(homePage)) {
-                loadUrl(homePage);
-                Logs.i(TAG, "onWindowVisibilityChanged-visibility=" + visibility + ",mIsLoaded=" + mIsLoaded + ",homePage=" + homePage);
-            }
-            // 恢复实例的 JS 执行
-            onResume();
-        } else {
-            // 暂停实例的渲染和 JS
-            onPause();
+    /*@Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        Logs.i(TAG, "dispatchTouchEvent");
+        return gestureDetector.onTouchEvent(ev);
+    }*/
+
+    GestureDetector gestureDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
+        @Override
+        public boolean onDown(@NonNull MotionEvent e) {
+            Logs.i(TAG, "onDown");
+            return true;
         }
-    }
+
+        @Override
+        public boolean onSingleTapUp(@NonNull MotionEvent e) {
+            Logs.i(TAG, "onSingleTapUp");
+//            AppUtils.openUrlInExternalBrowser(getContext(), mUrl);
+            return true;
+        }
+
+    });
 }

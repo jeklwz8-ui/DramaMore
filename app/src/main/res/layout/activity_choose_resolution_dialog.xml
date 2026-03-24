@@ -2,6 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:id="@+id/resolution"
     android:padding="16dp">
 
     <LinearLayout
@@ -12,15 +13,18 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Change Resolution"
-            android:textColor="@android:color/black"
+            android:text=""
+            android:textColor="@android:color/white"
             android:textSize="20sp" />
 
         <LinearLayout
             android:id="@+id/ll_container"
-            android:layout_width="match_parent"
+            android:layout_width="100dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:background="@drawable/bg_resolution_item"
+            android:layout_gravity="end"
+            android:layout_marginRight="16dp"
+            android:layout_marginTop="24dp"
             android:layout_marginBottom="20dp"
             android:orientation="vertical" />
 
@@ -29,7 +33,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="right"
-            android:text="Cancel"
-            android:textColor="@android:color/black" />
+            android:text=""
+            android:textColor="@android:color/white" />
     </LinearLayout>
 </FrameLayout>

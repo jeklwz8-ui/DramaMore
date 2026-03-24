@@ -8,7 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="@android:color/white">
+        android:background="@drawable/bg_dg_index_top_round">
 
 
         <androidx.cardview.widget.CardView
@@ -35,8 +35,8 @@
             android:layout_alignBottom="@id/cv_cover"
             android:layout_marginLeft="7dp"
             android:layout_toRightOf="@id/cv_cover"
-            android:textColor="#8F949C"
-            android:textSize="10sp" />
+            android:textColor="#FF8D8D8D"
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/tv_shortplay_title"
@@ -44,11 +44,12 @@
             android:layout_height="wrap_content"
             android:layout_above="@id/tv_shortplay_desc"
             android:layout_alignLeft="@id/tv_shortplay_desc"
-            android:layout_marginBottom="6dp"
+            android:layout_marginBottom="20dp"
             android:ellipsize="end"
+            android:textStyle="bold"
             android:maxLines="1"
-            android:textColor="#23272E"
-            android:textSize="16sp" />
+            android:textColor="#fff"
+            android:textSize="18sp" />
 
         <View
             android:id="@+id/view_divider"
@@ -65,7 +66,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/view_divider"
-            android:background="@android:color/white"
             app:tabIndicatorHeight="0dp"
             app:tabMode="fixed" />
 
@@ -86,7 +86,8 @@
             android:layout_alignParentRight="true"
             android:layout_marginTop="18dp"
             android:layout_marginRight="18dp"
-            android:src="@drawable/arrow_down" />
+            android:rotation="-90"
+            android:src="@drawable/ic_back" />
 
     </RelativeLayout>
 </FrameLayout>

@@ -41,4 +41,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "FastShort"
 include ':app'
-//include ':demolib'

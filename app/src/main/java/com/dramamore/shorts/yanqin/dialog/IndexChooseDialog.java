@@ -13,6 +13,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.compose.ui.unit.Dp;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
@@ -73,7 +74,6 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
 
         ViewPager2 viewPager2 = findViewById(R.id.view_pager);
 
-
         ArrayList<IndexTabData> indexTabDatas = new ArrayList<>();
         int tabCount = shortPlay.total % 30 == 0 ? shortPlay.total / 30 : shortPlay.total / 30 + 1;
         for (int i = 0; i < tabCount; i++) {
@@ -94,8 +94,15 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
                 IndexTabData tabData = indexTabDatas.get(position);
                 textView.setText(tabData.startIndex + "-" + tabData.endIndex);
                 textView.setTextSize(14);
-                textView.setTextColor(Color.parseColor("#7f192734"));
                 textView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+                // 判断是否是第一个 Tab (默认选中项)
+                if (position == 0) {
+                    textView.setTextColor(Color.WHITE);
+                } else {
+                    textView.setTextColor(Color.parseColor("#FF8D8D8D"));
+                }
+
                 tab.setCustomView(textView);
             }
         }).attach();
@@ -103,13 +110,13 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 TextView textView = (TextView) tab.getCustomView();
-                textView.setTextColor(Color.parseColor("#23272E"));
+                textView.setTextColor(Color.WHITE);
             }
 
             @Override
             public void onTabUnselected(TabLayout.Tab tab) {
                 TextView textView = (TextView) tab.getCustomView();
-                textView.setTextColor(Color.parseColor("#7f192734"));
+                textView.setTextColor(Color.parseColor("#FF8D8D8D"));
             }
 
             @Override
@@ -225,10 +232,10 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
             super(itemView);
             tvContent = new TextView(itemView.getContext());
             tvContent.setGravity(Gravity.CENTER);
-            tvContent.setTextColor(Color.BLACK);
+            tvContent.setTextColor(Color.WHITE);
             tvContent.setPadding(0, 40, 0, 40);
-            tvContent.setBackgroundColor(Color.parseColor("#F5F6F7"));
-            FrameLayout.LayoutParams contentLP = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+            tvContent.setBackground(itemView.getResources().getDrawable(R.drawable.bg_index_round));
+            FrameLayout.LayoutParams contentLP = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
             contentLP.gravity = Gravity.CENTER;
             contentLP.leftMargin = contentLP.rightMargin = DpUtils.dp2px(itemView.getContext(), 4);
             contentLP.topMargin = contentLP.bottomMargin = DpUtils.dp2px(itemView.getContext(), 3);
@@ -238,17 +245,19 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
             FrameLayout.LayoutParams statusLP = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
             statusLP.gravity = Gravity.RIGHT | Gravity.TOP;
             statusLP.topMargin = statusLP.rightMargin = DpUtils.dp2px(itemView.getContext(), 8);
-            statusView.setImageResource(R.drawable.status_playing);
+            statusView.setImageResource(R.drawable.ic_status);
             ((FrameLayout) itemView).addView(statusView, statusLP);
 
 
             this.onItemClickListener = onItemClickListener;
             itemView.setOnClickListener(this);
+
         }
 
         public void bindData(int index, int currentIndex) {
             this.index = index;
             tvContent.setText("" + index);
+            tvContent.setSelected(index == currentIndex);
             statusView.setVisibility(index == currentIndex ? View.VISIBLE : View.GONE);
         }
 

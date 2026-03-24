@@ -1,16 +1,15 @@
 package com.dramamore.shorts.yanqin.utils;
 
 import android.content.Context;
-import android.graphics.Color;
 
-import com.bytedance.sdk.shortplay.api.PSSDK;
 import com.bytedance.sdk.shortplay.api.ShortPlay;
 import com.dramamore.shorts.yanqin.dao.FollowDao;
+import com.dramamore.shorts.yanqin.dao.HistoryDao;
 import com.dramamore.shorts.yanqin.database.FollowDatabase;
+import com.dramamore.shorts.yanqin.database.HistoryDatabase;
 import com.dramamore.shorts.yanqin.entity.FollowDaoEntity;
+import com.dramamore.shorts.yanqin.entity.HistoryDaoEntity;
 import com.google.gson.Gson;
-
-import java.util.concurrent.Executor;
 
 public class ShortUtils {
     private static final Gson gson = new Gson();
@@ -36,7 +35,7 @@ public class ShortUtils {
         Logs.i(TAG, "insertOrDelete-isCollect=" + isCollect + ",sid=" + shortPlay.id);
         FollowDatabase db = FollowDatabase.getDatabase(context);
         FollowDao followDao = db.followDao();
-        FollowDatabase.databaseWriteExecutor.execute(new Runnable() {
+        FollowDatabase.executor.execute(new Runnable() {
             @Override
             public void run() {
                 if (isCollect) {
@@ -50,12 +49,12 @@ public class ShortUtils {
 
     public static void historyInsert(Context context, ShortPlay shortPlay, int playIndex) {
         Logs.i(TAG, "historyInsertOrDelete-sid=" + shortPlay.id + ",playIndex=" + playIndex);
-        FollowDatabase db = FollowDatabase.getDatabase(context);
-        FollowDao followDao = db.followDao();
-        FollowDatabase.databaseWriteExecutor.execute(new Runnable() {
+        HistoryDatabase db = HistoryDatabase.getDatabase(context);
+        HistoryDao historyDao = db.historyDao();
+        HistoryDatabase.executor.execute(new Runnable() {
             @Override
             public void run() {
-                followDao.insert(new FollowDaoEntity(shortPlay.id, ShortUtils.shortPlayToJson(shortPlay), playIndex));
+                historyDao.insert(new HistoryDaoEntity(shortPlay.id, ShortUtils.shortPlayToJson(shortPlay), playIndex));
             }
         });
     }

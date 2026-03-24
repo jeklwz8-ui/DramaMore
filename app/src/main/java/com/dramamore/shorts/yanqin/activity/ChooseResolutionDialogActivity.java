@@ -5,18 +5,24 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.ss.ttvideoengine.Resolution;
 
-public class ChooseResolutionDialogActivity extends Activity {
+public class ChooseResolutionDialogActivity extends AppCompatActivity {
 
     private static final String EXTRA_CURRENT_RESOLUTION = "current_resolution";
     private static final String EXTRA_SUPPORT_RESOLUTION_LIST = "support_resolution_list";
@@ -39,6 +45,10 @@ public class ChooseResolutionDialogActivity extends Activity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 建议在 onCreate 顶部调用
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+       // 设置状态栏颜色为透明
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
 
         Intent intent = getIntent();
         if (intent == null) {
@@ -55,6 +65,12 @@ public class ChooseResolutionDialogActivity extends Activity {
         setContentView(R.layout.activity_choose_resolution_dialog);
         setFinishOnTouchOutside(true);
 
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.resolution), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+
         findViewById(R.id.tv_cancel).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -67,8 +83,9 @@ public class ChooseResolutionDialogActivity extends Activity {
         for (final Resolution resolution : supportList) {
             TextView item = new TextView(this);
             item.setText(resolution.toString());
-            item.setTextColor(Color.BLACK);
-            item.setTextSize(14);
+            item.setTextColor(Color.WHITE);
+            item.setGravity(Gravity.CENTER);
+            item.setTextSize(16);
             item.setPadding(0, verticalPadding, 0, verticalPadding);
             if (resolution != current) {
                 item.setAlpha(0.5f);

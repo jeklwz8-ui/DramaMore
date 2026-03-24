@@ -45,12 +45,7 @@ public class BannerAdapter extends RecyclerView.Adapter<BannerAdapter.ViewHolder
         holder.imageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                holder.itemView.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        DramaPlayActivity.start(((AppCompatActivity) holder.itemView.getContext()),images.get(realPosition));
-                    }
-                });
+                DramaPlayActivity.start(((AppCompatActivity) holder.itemView.getContext()), images.get(realPosition));
             }
         });
     }
@@ -75,7 +70,7 @@ public class BannerAdapter extends RecyclerView.Adapter<BannerAdapter.ViewHolder
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
-        imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        imageView.setScaleType(ImageView.ScaleType.FIT_XY);
 
         return new ViewHolder(imageView);
     }

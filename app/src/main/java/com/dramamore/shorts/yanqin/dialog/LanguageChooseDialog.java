@@ -9,7 +9,10 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.CheckBox;
 import android.widget.Checkable;
+import android.widget.FrameLayout;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -17,6 +20,7 @@ import androidx.fragment.app.DialogFragment;
 
 import com.bytedance.sdk.shortplay.api.PSSDK;
 import com.dramamore.shorts.yanqin.R;
+import com.dramamore.shorts.yanqin.utils.DpUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -42,6 +46,12 @@ public class LanguageChooseDialog extends DialogFragment {
     private final List<CheckBox> checkBoxes = new ArrayList<>();
     private ContentLanguageChangeListener languageChangeListener;
 
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setStyle(STYLE_NORMAL, R.style.FullScreenDialog);
+
+    }
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -51,32 +61,66 @@ public class LanguageChooseDialog extends DialogFragment {
     @Override
     public void onResume() {
         super.onResume();
+        getDialog().getWindow().setFlags(
+                WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+        );
         Window window = getDialog().getWindow();
         WindowManager.LayoutParams attributes = window.getAttributes();
         attributes.width = WindowManager.LayoutParams.MATCH_PARENT;
+        attributes.height = WindowManager.LayoutParams.MATCH_PARENT;
         window.setAttributes(attributes);
+
+        // 👇 核心：内容延伸到状态栏
+        View decorView = window.getDecorView();
+        decorView.setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        );
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        LinearLayout languageList = view.findViewById(R.id.ll_choices);
+        GridLayout gridLayout = view.findViewById(R.id.gl_choices);
 
         List<String> currentSetLanguage = PSSDK.getContentLanguages();
         for (Map.Entry<String, String> entry : languageDisplayNames.entrySet()) {
             CheckBox checkBox = new CheckBox(view.getContext());
             checkBox.setText(entry.getKey() + "/" + entry.getValue());
             checkBox.setTag(entry.getKey());
-            checkBox.setTextColor(Color.BLACK);
-            checkBox.setPadding(0, 30, 0, 30);
+            checkBox.setTextColor(Color.WHITE);
+            checkBox.setButtonDrawable(null);
+            checkBox.setBackground(getResources().getDrawable(R.drawable.bg_lang_round));
+            checkBox.setPadding(20, 30, 20, 30);
             if (currentSetLanguage != null) {
-                checkBox.setChecked(currentSetLanguage.contains(entry.getKey()));
+                checkBox.setSelected(currentSetLanguage.contains(entry.getKey()));
             }
-            languageList.addView(checkBox, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+//            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+
+            // 3. 关键：设置 LayoutParams 确保平分宽度
+            // columnSpec 参数 1: 位置(UNDEFINED 自动排)；参数 2: 权重(1f 代表平分)
+            GridLayout.Spec rowSpec = GridLayout.spec(GridLayout.UNDEFINED);
+            GridLayout.Spec colSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams(rowSpec, colSpec);
+
+            // 必须将宽度设为 0，权重才会生效
+            params.width = 0;
+            params.height = DpUtils.dp2px(getContext(), 50); // 或者 WRAP_CONTENT
+            params.setMargins(10, 10, 10, 10); // 设置间距
+
+            gridLayout.addView(checkBox, params);
             checkBoxes.add(checkBox);
         }
 
+        view.findViewById(R.id.iv_back).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                dismiss();
+            }
+        });
         view.findViewById(R.id.btn_ok).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

@@ -189,7 +189,7 @@ public class RecommendFragment extends Fragment {
         public void bindItemData(ShortPlayFragment shortPlayFragment, ShortPlay shortPlay, int index) {
             this.shortPlayFragment = shortPlayFragment;
             this.shortPlay = shortPlay;
-            chooseIndexTitleTV.setText(shortPlay.total + "集 - " + shortPlay.title);
+            chooseIndexTitleTV.setText(shortPlay.total + shortPlayFragment.getContext().getString(R.string.s_eps) +" - " + shortPlay.title);
             dramaTitleTV.setText(shortPlay.title);
             dramaDescTV.setText(shortPlay.desc);
         }
@@ -243,7 +243,7 @@ public class RecommendFragment extends Fragment {
                     .displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_DESC, false)
                     .playSingleItem(true);
             ShortPlayFragment detailFragment = PSSDK.createDetailFragment(shortPlay, builder.build(), new PSSDK.ShortPlayDetailPageListener() {
-
+                private DramaPlayActivity.ProgressChangeListener progressChangeListener;
                 @Override
                 public void onOverScroll(int direction) {
 
@@ -252,7 +252,9 @@ public class RecommendFragment extends Fragment {
 
                 @Override
                 public void onProgressChange(ShortPlay shortPlay, int index, int currentPlayTime, int duration) {
-
+                    if (progressChangeListener != null) {
+                        progressChangeListener.onProgressChanged(currentPlayTime, duration);
+                    }
                 }
 
                 @Override
@@ -317,7 +319,7 @@ public class RecommendFragment extends Fragment {
                     FrameLayout.LayoutParams shareLP = new FrameLayout.LayoutParams(DpUtils.dp2px(activity, 32), DpUtils.dp2px(activity, 32));
                     shareLP.gravity = Gravity.RIGHT | Gravity.BOTTOM;
                     shareLP.rightMargin = DpUtils.dp2px(activity, 16);
-                    shareLP.bottomMargin = DpUtils.dp2px(activity, 196);
+                    shareLP.bottomMargin = DpUtils.dp2px(activity, 280);
                     shareView.setLayoutParams(shareLP);
                     shareView.setOnClickListener(new View.OnClickListener() {
                         @Override
@@ -335,7 +337,7 @@ public class RecommendFragment extends Fragment {
                     FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                     params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
                     params.rightMargin = DpUtils.dp2px(activity, 16);
-                    params.bottomMargin = DpUtils.dp2px(activity, 122);
+                    params.bottomMargin = DpUtils.dp2px(activity, 200);
                     customLikeView.setLayoutParams(params);
                     views.add(customLikeView);
 
@@ -344,13 +346,16 @@ public class RecommendFragment extends Fragment {
                     params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                     params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
                     params.rightMargin = DpUtils.dp2px(activity, 16);
-                    params.bottomMargin = DpUtils.dp2px(activity, 60);
+                    params.bottomMargin = DpUtils.dp2px(activity, 130);
                     collectView.setLayoutParams(params);
                     views.add(collectView);
 
                     CustomOverlayView customOverlayView = new CustomOverlayView(activity);
-                    customOverlayView.setLayoutParams(new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+                    params=new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
+                    customOverlayView.setLayoutParams(params);
+                    params.bottomMargin = DpUtils.dp2px(activity, 5);
                     views.add(customOverlayView);
+                    progressChangeListener = customOverlayView;
 
                     return views;
                 }

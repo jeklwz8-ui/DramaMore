@@ -3,10 +3,15 @@ package com.dramamore.shorts.yanqin;
 import android.app.Application;
 import android.util.Log;
 
+import com.bytedance.sdk.openadsdk.api.init.PAGConfig;
+import com.bytedance.sdk.openadsdk.api.init.PAGSdk;
 import com.bytedance.sdk.shortplay.api.PSSDK;
 
 public class App extends Application {
     private static final String TAG = "App";
+    public static final String REWARDAD_ID="";
+    public static final String NATIVEAD_ID="";
+    public static final String BANNERAD_ID="";
 
     @Override
     public void onCreate() {
@@ -24,7 +29,7 @@ public class App extends Application {
                 .vodAppId("943688")
                 .securityKey(securityKey)
                 .licenseAssertPath("l-3887091217-ch-vod-a-943688.lic")
-                .debug(true);
+                .debug(BuildConfig.DEBUG);
 
         PSSDK.init(this, builder.build(), new PSSDK.PSSDKInitListener() {
             @Override
@@ -34,5 +39,23 @@ public class App extends Application {
         });
 
         PSSDK.setEligibleAudience(true);
+
+        initPangleAdsSDK();
+    }
+
+    private void initPangleAdsSDK() {
+        PAGConfig.Builder builder = new PAGConfig.Builder();
+        builder.appId("8799428");
+        PAGSdk.init(this, builder.build(), new PAGSdk.PAGInitCallback() {
+            @Override
+            public void success() {
+                Log.d(TAG, "pangle ads sdk init success");
+            }
+
+            @Override
+            public void fail(int i, String s) {
+                Log.d(TAG, "pangle ads sdk init fail, i=" + i + ", s=" + s);
+            }
+        });
     }
 }

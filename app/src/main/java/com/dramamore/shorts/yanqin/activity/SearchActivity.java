@@ -1,8 +1,14 @@
 package com.dramamore.shorts.yanqin.activity;
 
+import android.graphics.Color;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -25,6 +31,7 @@ import com.dramamore.shorts.yanqin.adapter.LinearSpacingItemDecoration;
 import com.dramamore.shorts.yanqin.adapter.SearchListAdapter;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
+import com.dramamore.shorts.yanqin.utils.SPUtils;
 
 public class SearchActivity extends AppCompatActivity {
 
@@ -34,6 +41,7 @@ public class SearchActivity extends AppCompatActivity {
     private SearchListAdapter adapter;
     private TextView tvSearch;
     private EditText etSearch;
+    private static final String HISTORY_KEY="history_key";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,13 +64,53 @@ public class SearchActivity extends AppCompatActivity {
             }
         });
         etSearch = findViewById(R.id.et_search);
+        etSearch.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void afterTextChanged(Editable s) {
+                currentPage = 1;
+                loadMoreData();
+            }
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+        });
+        etSearch.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH
+                    || actionId == EditorInfo.IME_ACTION_DONE
+                    || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                    && event.getAction() == KeyEvent.ACTION_DOWN)) {
+
+                currentPage = 1;
+                loadMoreData();
+                return true;
+            }
+            return false;
+        });
+
+        /*LinearLayout llSearchHis = findViewById(R.id.ll_search_his);
+        String hisStr = SPUtils.getInstance(this).getString(HISTORY_KEY, "");
+        String[] hisTags = hisStr.split("_", 5);
+        for(int i=0;i<hisTags.length-1;i++){
+            TextView textView=new TextView(this);
+            textView.setText(hisTags[i]);
+            textView.setTextSize(14);
+            textView.setTextColor(Color.WHITE);
+            llSearchHis.addView(textView);
+        }*/
 
         initRecyclerView();
     }
 
     private void initRecyclerView() {
         RecyclerView recyclerView = findViewById(R.id.rv_bottom);
-        recyclerView.addItemDecoration(new LinearSpacingItemDecoration(3,this));
+        recyclerView.addItemDecoration(new LinearSpacingItemDecoration(10,this));
 
         adapter = new SearchListAdapter();
 

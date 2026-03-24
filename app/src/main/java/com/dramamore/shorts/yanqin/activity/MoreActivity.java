@@ -1,5 +1,6 @@
 package com.dramamore.shorts.yanqin.activity;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
@@ -10,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -38,6 +40,10 @@ public class MoreActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 建议在 onCreate 顶部调用
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        // 设置状态栏颜色为透明
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_more);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.more), (v, insets) -> {

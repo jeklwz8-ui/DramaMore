@@ -6,12 +6,15 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Parcelable;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseIntArray;
 import android.view.Gravity;
@@ -21,21 +24,34 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.compose.ui.unit.Dp;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.DialogFragment;
 
+import com.bumptech.glide.Glide;
 import com.bytedance.sdk.openadsdk.api.banner.PAGBannerAd;
 import com.bytedance.sdk.openadsdk.api.banner.PAGBannerAdLoadListener;
 import com.bytedance.sdk.openadsdk.api.banner.PAGBannerRequest;
 import com.bytedance.sdk.openadsdk.api.banner.PAGBannerSize;
 import com.bytedance.sdk.openadsdk.api.model.PAGErrorModel;
+import com.bytedance.sdk.openadsdk.api.nativeAd.PAGImageItem;
+import com.bytedance.sdk.openadsdk.api.nativeAd.PAGMediaView;
 import com.bytedance.sdk.openadsdk.api.nativeAd.PAGNativeAd;
+import com.bytedance.sdk.openadsdk.api.nativeAd.PAGNativeAdData;
 import com.bytedance.sdk.openadsdk.api.nativeAd.PAGNativeAdLoadListener;
 import com.bytedance.sdk.openadsdk.api.nativeAd.PAGNativeRequest;
 import com.bytedance.sdk.openadsdk.api.reward.PAGRewardItem;
@@ -47,7 +63,11 @@ import com.bytedance.sdk.shortplay.api.EpisodeData;
 import com.bytedance.sdk.shortplay.api.PSSDK;
 import com.bytedance.sdk.shortplay.api.ShortPlay;
 import com.bytedance.sdk.shortplay.api.ShortPlayFragment;
+import com.dramamore.shorts.yanqin.App;
 import com.dramamore.shorts.yanqin.R;
+import com.dramamore.shorts.yanqin.dao.HistoryDao;
+import com.dramamore.shorts.yanqin.database.HistoryDatabase;
+import com.dramamore.shorts.yanqin.entity.HistoryDaoEntity;
 import com.dramamore.shorts.yanqin.listener.IIndexChooseListener;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
@@ -77,9 +97,9 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private PSSDK.VideoPlayInfo currentVideoPlayInfo;
     private View bannerView;
     private ShortPlay shortPlay;
-    private int startFromIndex;
+    //private int startFromIndex;
+    //private int startFromSeconds;
     private PAGRewardedAd rewardedAd;
-    private int startFromSeconds;
     private View bottomDefaultView;
     private Resolution[] resolutions;
     private Resolution currentResolution;
@@ -91,11 +111,11 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         start(context, shortPlay, 1, 0);
     }
 
-    public static void start(Context context, ShortPlay shortPlay, int index) {
+    private static void start(Context context, ShortPlay shortPlay, int index) {
         start(context, shortPlay, index, 0);
     }
 
-    public static void start(Context context, ShortPlay shortPlay, int index, int fromSeconds) {
+    private static void start(Context context, ShortPlay shortPlay, int index, int fromSeconds) {
         Intent intent = new Intent(context, DramaPlayActivity.class);
         if (!(context instanceof Activity)) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -109,6 +129,11 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 建议在 onCreate 顶部调用
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        // 设置状态栏颜色为透明
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        EdgeToEdge.enable(this);
 
         Intent intent = getIntent();
         Parcelable parcelableShortPlay = intent.getParcelableExtra(EXTRA_SHORT_PLAY);
@@ -123,20 +148,39 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         Gson gson = new Gson();
         String json = gson.toJson(shortPlay);
         shortPlay = gson.fromJson(json, ShortPlay.class);
-        startFromIndex = intent.getIntExtra(EXTRA_SHORT_PLAY_INDEX, 1);
-        startFromSeconds = intent.getIntExtra(EXTRA_SHORT_PLAY_FROM_SECONDS, 0);
+        //startFromIndex = intent.getIntExtra(EXTRA_SHORT_PLAY_INDEX, 1);
+        //startFromSeconds = intent.getIntExtra(EXTRA_SHORT_PLAY_FROM_SECONDS, 0);
         if (shortPlay.episodes == null || shortPlay.episodes.isEmpty()) {
             toast("episodes is empty");
         }
 
         setContentView(R.layout.act_play);
 
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.play), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
 
         // 预加载信息流广告
         loadPangleFeedAd();
         loadRewardAd(null);
 
-        showDetailFragment(shortPlay);
+        HistoryDatabase.executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                HistoryDatabase dp = HistoryDatabase.getDatabase(DramaPlayActivity.this);
+                HistoryDao historyDao = dp.historyDao();
+                HistoryDaoEntity entity = historyDao.getEntityByShortId(shortPlay.id);
+                int playIndex = entity == null ? 0 : entity.play_index;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        showDetailFragment(shortPlay, playIndex, 0);
+                    }
+                });
+            }
+        });
     }
 
     @NonNull
@@ -147,19 +191,21 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         return bottomDefaultView;
     }
 
-    private void showDetailFragment(ShortPlay shortPlay) {
+    private void showDetailFragment(ShortPlay shortPlay, int startFromIndex, int startFromSeconds) {
         // 默认前5集解锁
         for (int i = 1; i <= 5; i++) {
             unlockedIndexes.put(i, 1);
         }
 
-
         PSSDK.DetailPageConfig.Builder builder = new PSSDK.DetailPageConfig.Builder();
-
         builder.displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_DESC, false);
         builder.displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_TITLE, false);
         builder.displayProgressBar(false);
         builder.startPlayIndex(startFromIndex);
+        builder.enableImmersiveMode(10000) // 【可选】播放页无操作xxxms后隐藏文字进入沉浸式模式，默认不启用此功能，启用时可指定时间
+                .playSingleItem(false); // 【可选】只播放一集模式，用于在开发者用多个播放页Fragment对象构造滑动切剧场景时，默认false
+        // 开启自动播放下一集
+        builder.enableAutoPlayNext(true);
         builder.startPlayAtTimeSeconds(startFromSeconds);
         builder.hideLeftTopCloseAndTitle(false, new PSSDK.ShortPlayDetailPageCloseListener() {
             @Override
@@ -171,60 +217,65 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         // 配置广告策略
         builder.adCustomProvider(new PSSDK.AdCustomProvider() {
-                    @Override
-                    public List<Integer> getDetailDrawAdPositions() {
-                        ArrayList<Integer> integers = new ArrayList<>();
-                        // 在第1集、第3集、第50集后面插入广告
-                        integers.add(1);
+            @Override
+            public List<Integer> getDetailDrawAdPositions() {
+                ArrayList<Integer> integers = new ArrayList<>();
+                // 在第1集、第3集、第50集后面插入广告
+                        /*integers.add(1);
                         integers.add(3);
-                        integers.add(50);
-                        return integers;
+                        integers.add(50);*/
+                return integers;
+            }
+
+            @Override
+            public PSSDK.DrawAdProvider getDrawAdProvider() {
+                return new PSSDK.DrawAdProvider() {
+                    @Override
+                    public void onPrepareAd() {
+                        // 快划到广告插入位置时调用，可以在这里请求广告
+                        loadPangleFeedAd();
                     }
 
                     @Override
-                    public PSSDK.DrawAdProvider getDrawAdProvider() {
-                        return new PSSDK.DrawAdProvider() {
-                            @Override
-                            public void onPrepareAd() {
-                                // 快划到广告插入位置时调用，可以在这里请求广告
-                                loadPangleFeedAd();
-                            }
-
-                            @Override
-                            public View onObtainAdView(int position, int index) {
-                                // 返回广告View，如没有可用广告则返回null
-                                //return createFeedAdView();
-                                return null;
-                            }
-
-                            @Override
-                            public void onDestroy() {
-                                // 播放页退出时调用，可在这里释放广告资源
-                            }
-                        };
+                    public View onObtainAdView(int position, int index) {
+                        // 返回广告View，如没有可用广告则返回null
+                        //return createFeedAdView();
+                        return null;
                     }
-                })
-                .progressBarMarginToBottom(10);
+
+                    @Override
+                    public void onDestroy() {
+                        // 播放页退出时调用，可在这里释放广告资源
+                    }
+                };
+            }
+        });
         detailFragment = PSSDK.createDetailFragment(shortPlay, builder.build(), new PSSDK.ShortPlayDetailPageListener() {
+            ProgressChangeListener progressChangeListener;
+            ResolutionChangeListener resolutionChangeListener;
 
             @Override
             public void onOverScroll(int direction) {
                 String dir = direction == PSSDK.DIRECTION_UP ? "UP" : "DOWN";
-                Log.d(TAG, "onOverScroll() called with: direction = [" + direction + "], dir=" + dir);
+                Logs.i(TAG, "onOverScroll() called with: direction = [" + direction + "], dir=" + dir);
             }
 
             @Override
             public void onProgressChange(ShortPlay shortPlay, int index, int currentPlayTimeInSeconds, int durationInSeconds) {
-//                Log.d(TAG, "onProgressChange: " + currentPlayTimeInSeconds + "/" + durationInSeconds);
+                Logs.i(TAG, "onProgressChange:index=" + index + ",进度：" + currentPlayTimeInSeconds + "/" + durationInSeconds);
 
                 playHistory.index = index;
                 playHistory.seconds = currentPlayTimeInSeconds;
+
+                if (progressChangeListener != null) {
+                    progressChangeListener.onProgressChanged(currentPlayTimeInSeconds, durationInSeconds);
+                }
             }
 
             @Override
             public boolean onPlayFailed(PSSDK.ErrorInfo errorInfo) {
                 // 视频播放失败
-                Log.d(TAG, "onPlayFailed() called with: errorInfo = [" + errorInfo + "]");
+                Logs.i(TAG, "onPlayFailed() called with: errorInfo = [" + errorInfo + "]");
                 if (errorInfo.code == PSSDK.ErrorInfo.ERROR_CODE_CURRENT_COUNTRY_NOT_SUPPORT) {
                     // 当前地区不支持播放，SDK会Toast提示，开发者也可以在此时显示弹窗等更友好的提示
                     AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(DramaPlayActivity.this);
@@ -239,7 +290,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             @Override
             public void onShortPlayPlayed(ShortPlay shortPlay, int index, EpisodeData episodeData) {
                 // 每一集开始播放时回调，可用来记录播放历史
-                Log.d(TAG, "onShortPlayPlayed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
+                Logs.i(TAG, "onShortPlayPlayed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
 
                 if (shortPlay.isCollected) {//已收藏则更新哪一集
                     ShortUtils.followInsertOrDelete(DramaPlayActivity.this, true, shortPlay, index);
@@ -252,7 +303,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             @Override
             public void onItemSelected(int position, ItemType type, int index) {
-                Log.d(TAG, "onItemSelected() called with: position = [" + position + "], type = [" + type + "], index = [" + index + "]");
+                Logs.i(TAG, "onItemSelected() called with: position = [" + position + "], type = [" + type + "], index = [" + index + "]");
 
                 resolutions = null;
                 currentResolution = null;
@@ -273,38 +324,39 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             @Override
             public void onVideoPlayStateChanged(ShortPlay shortPlay, int index, int playbackState) {
-                Log.d(TAG, "onVideoPlayStateChanged() called with: shortPlay = [" + shortPlay + "], index = [" + index + "], playbackState = [" + playbackState + "]");
+                Logs.i(TAG, "onVideoPlayStateChanged() called with: shortPlay = [" + shortPlay + "], index = [" + index + "], playbackState = [" + playbackState + "]");
             }
 
             @Override
             public void onVideoPlayCompleted(ShortPlay shortPlay, int index) {
-                Log.d(TAG, "onVideoPlayCompleted: index=" + index);
+                Logs.i(TAG, "onVideoPlayCompleted: index=" + index + ",nextIndex=" + (index + 1));
             }
 
             @Override
             public void onEnterImmersiveMode() {
                 // 进入沉浸式模式
-                Log.d(TAG, "onEnterImmersiveMode() called");
+                Logs.i(TAG, "onEnterImmersiveMode() called");
             }
 
             @Override
             public void onExitImmersiveMode() {
                 // 退出沉浸式模式
-                Log.d(TAG, "onExitImmersiveMode() called");
+                Logs.i(TAG, "onExitImmersiveMode() called");
             }
 
             @Override
             public boolean isNeedBlock(ShortPlay shortPlay, int index) {
                 // 询问index集是否锁定，true锁定后则该集无法自动播放，需要通过showAdIfNeed里完成解锁
                 // 默认对每一集均会询问，一旦返回false则此播放页不会再询问该集
-                Log.d(TAG, "isNeedBlock() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
-                return unlockedIndexes.get(index, 0) != 1;
+                Logs.i(TAG, "isNeedBlock() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
+                //return unlockedIndexes.get(index, 0) != 1;
+                return false;
             }
 
             @Override
             public void showAdIfNeed(ShortPlay shortPlay, int index, PSSDK.ShortPlayBlockResultListener listener) {
                 // 当isNeedBlock指定index集锁定后，在用户切换到该集时，SDK不会播放视频，同时会调用此回调，可在此时展示激励广告或购买等交互，用户达成后调用listener.onShortPlayUnlocked告知SDK可播放该集
-                Log.d(TAG, "showAdIfNeed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "], listener = [" + listener + "]");
+                Logs.i(TAG, "showAdIfNeed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "], listener = [" + listener + "]");
                 showUnLockDialog(shortPlay, index, listener);
             }
 
@@ -315,7 +367,11 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 resolutions = videoPlayInfo.supportResolutions;
                 // 当前分辨率
                 currentResolution = videoPlayInfo.currentResolution;
-                Log.d(TAG, "onVideoInfoFetched: currentResolution=" + videoPlayInfo.currentResolution);
+
+                if (resolutionChangeListener != null) {
+                    resolutionChangeListener.onResolutionChanged(currentResolution.toString());
+                }
+                Logs.i(TAG, "onVideoInfoFetched: currentResolution=" + currentResolution);
             }
 
             @Override
@@ -328,7 +384,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 shareView.setImageResource(R.drawable.share);
                 FrameLayout.LayoutParams shareLP = new FrameLayout.LayoutParams(DpUtils.dp2px(getApplicationContext(), 32), DpUtils.dp2px(getApplicationContext(), 32));
                 shareLP.gravity = Gravity.RIGHT | Gravity.BOTTOM;
-                shareLP.bottomMargin = DpUtils.dp2px(getApplicationContext(), 206);
+                shareLP.bottomMargin = DpUtils.dp2px(getApplicationContext(), 280);
                 shareLP.rightMargin = DpUtils.dp2px(getApplicationContext(), 16);
                 shareView.setLayoutParams(shareLP);
                 shareView.setOnClickListener(new View.OnClickListener() {
@@ -346,7 +402,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 CustomLikeView customLikeView = new CustomLikeView(getApplicationContext());
                 FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                 params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-                params.bottomMargin = DpUtils.dp2px(getApplicationContext(), 132);
+                params.bottomMargin = DpUtils.dp2px(getApplicationContext(), 200);
                 params.rightMargin = DpUtils.dp2px(getApplicationContext(), 16);
                 customLikeView.setLayoutParams(params);
                 views.add(customLikeView);
@@ -355,7 +411,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 CustomCollectView collectView = new CustomCollectView(getApplicationContext());
                 params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                 params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-                params.bottomMargin = DpUtils.dp2px(getApplicationContext(), 62);
+                params.bottomMargin = DpUtils.dp2px(getApplicationContext(), 130);
                 params.rightMargin = DpUtils.dp2px(getApplicationContext(), 16);
                 collectView.setLayoutParams(params);
                 views.add(collectView);
@@ -381,12 +437,16 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 CustomProgressBar customProgressBar = new CustomProgressBar(getApplicationContext());
                 FrameLayout.LayoutParams lpProgressBar = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                 lpProgressBar.gravity = Gravity.BOTTOM;
-                lpProgressBar.bottomMargin = DpUtils.dp2px(getApplicationContext(), 38);
+                lpProgressBar.bottomMargin = DpUtils.dp2px(getApplicationContext(), 70);
                 customProgressBar.setLayoutParams(lpProgressBar);
                 views.add(customProgressBar);
 
                 CustomOverlayView customOverlayView = new CustomOverlayView(getApplicationContext());
-                customOverlayView.setLayoutParams(new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+                params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
+                params.bottomMargin = DpUtils.dp2px(getApplicationContext(), 20);
+                customOverlayView.setLayoutParams(params);
+                progressChangeListener = customOverlayView;
+                resolutionChangeListener = customOverlayView;
                 views.add(customOverlayView);
                 return views;
             }
@@ -432,17 +492,17 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         nativeAd.registerViewForInteraction(((ViewGroup) adRootView), clickViewList, clickCreativeList, null, new PAGNativeAdInteractionListener() {
             @Override
             public void onAdShowed() {
-                Log.d(TAG, "onAdShowed() called");
+                Logs.i(TAG, "onAdShowed() called");
             }
 
             @Override
             public void onAdClicked() {
-                Log.d(TAG, "onAdClicked() called");
+                Logs.i(TAG, "onAdClicked() called");
             }
 
             @Override
             public void onAdDismissed() {
-                Log.d(TAG, "onAdDismissed() called");
+                Logs.i(TAG, "onAdDismissed() called");
             }
         });
 
@@ -451,7 +511,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
     private void loadRewardAd(PAGRewardedAdLoadCallback callback) {
         PAGRewardedRequest rewardedRequest = new PAGRewardedRequest();
-        PAGRewardedAd.loadAd("980088192", rewardedRequest, new PAGRewardedAdLoadCallback() {
+        PAGRewardedAd.loadAd(App.REWARDAD_ID, rewardedRequest, new PAGRewardedAdLoadCallback() {
             @Override
             public void onError(@NonNull PAGErrorModel pagErrorModel) {
                 if (callback != null) {
@@ -471,15 +531,15 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
     private void loadPangleFeedAd() {
         PAGNativeRequest request = new PAGNativeRequest();
-        PAGNativeAd.loadAd("980088216", request, new PAGNativeAdLoadListener() {
+        PAGNativeAd.loadAd(App.NATIVEAD_ID, request, new PAGNativeAdLoadListener() {
             @Override
             public void onError(int code, String message) {
-                Log.d(TAG, "load pangle ad fail, code=" + code + ", message=" + message);
+                Logs.i(TAG, "load pangle ad fail, code=" + code + ", message=" + message);
             }
 
             @Override
             public void onAdLoaded(PAGNativeAd pagNativeAd) {
-                Log.d(TAG, "load pangle ad success, " + pagNativeAd);
+                Logs.i(TAG, "load pangle ad success, " + pagNativeAd);
                 feedAds.add(pagNativeAd);
             }
         });
@@ -488,15 +548,15 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private void loadPangleBannerAd() {
 
         PAGBannerRequest request = new PAGBannerRequest(PAGBannerSize.BANNER_W_320_H_50);
-        PAGBannerAd.loadAd("980099802", request, new PAGBannerAdLoadListener() {
+        PAGBannerAd.loadAd(App.BANNERAD_ID, request, new PAGBannerAdLoadListener() {
             @Override
             public void onError(int i, String s) {
-                Log.d(TAG, "onError() called with: i = [" + i + "], s = [" + s + "]");
+                Logs.i(TAG, "onError() called with: i = [" + i + "], s = [" + s + "]");
             }
 
             @Override
             public void onAdLoaded(PAGBannerAd pagBannerAd) {
-                Log.d(TAG, "onAdLoaded() called with: pagBannerAd = [" + pagBannerAd + "]");
+                Logs.i(TAG, "onAdLoaded() called with: pagBannerAd = [" + pagBannerAd + "]");
                 bannerView = pagBannerAd.getBannerView();
                 detailFragment.setBottomExtraViewContent(bannerView, ShortPlayFragment.BottomViewType.AD);
             }
@@ -646,13 +706,13 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     @Override
     protected void onPause() {
         super.onPause();
-        Log.d(TAG, "onPause: ");
+        Logs.i(TAG, "onPause: ");
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        Log.d(TAG, "onResume: ");
+        Logs.i(TAG, "onResume: ");
 
         if (taskWhenResume != null) {
             taskWhenResume.run();
@@ -723,7 +783,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         for (int i = playHistory.index; i <= shortPlay.total && expectUnlockCount > 0; i++) {
             if (unlockedIndexes.get(i, 0) != 1) {
                 unlockedIndexes.put(i, 1);
-                Log.d(TAG, "onShortPlayUnlocked: unlock " + i);
+                Logs.i(TAG, "onShortPlayUnlocked: unlock " + i);
                 expectUnlockCount--;
                 finalUnlockCount++;
             }
@@ -733,7 +793,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             for (int i = 1; i < playHistory.index && expectUnlockCount > 0; i++) {
                 if (unlockedIndexes.get(i, 0) != 1) {
                     unlockedIndexes.put(i, 1);
-                    Log.d(TAG, "onShortPlayUnlocked: unlock " + i);
+                    Logs.i(TAG, "onShortPlayUnlocked: unlock " + i);
                     expectUnlockCount--;
                     finalUnlockCount++;
                 }
@@ -770,6 +830,10 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         void onProgressChanged(int progress, int max);
     }
 
+    public interface ResolutionChangeListener {
+        void onResolutionChanged(String resoluton);
+    }
+
     public interface IUnlockMoreListener {
         void onChooseCancel();
 
@@ -793,7 +857,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
     }
 
-    private static class CustomProgressBar extends androidx.appcompat.widget.AppCompatSeekBar implements PSSDK.IControlProgressBar, SeekBar.OnSeekBarChangeListener {
+    private static class CustomProgressBar extends SeekBar implements PSSDK.IControlProgressBar, SeekBar.OnSeekBarChangeListener {
 
         private ShortPlayFragment shortPlayFragment;
         private int index;
@@ -801,6 +865,15 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         public CustomProgressBar(Context context) {
             super(context);
 
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                setMaxHeight(DpUtils.dp2px(context, 4));
+            }
+            setPadding(DpUtils.dp2px(context,4),0,DpUtils.dp2px(context,4),0);
+            setThumb(getResources().getDrawable(R.drawable.custom_thumb, null));
+            Drawable drawable = ContextCompat.getDrawable(context, R.drawable.custom_seekbar_track);
+            Rect bounds = getProgressDrawable().getBounds();
+            setProgressDrawable(drawable);
+            getProgressDrawable().setBounds(bounds);
             setOnSeekBarChangeListener(this);
         }
 
@@ -848,7 +921,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         public CustomErrorView(Context context) {
             super(context);
-            setText("Demo自定义错误页");
+            setText(context.getText(R.string.s_error));
             setGravity(Gravity.CENTER);
             setBackgroundColor(Color.WHITE);
         }
@@ -911,7 +984,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         @Override
         public void setCurrentStatus(ShortPlay shortPlay, int index, PSSDK.ControlStatus status, PSSDK.StatusExtraInfo extraInfo) {
             this.status = status;
-            Logs.i(TAG, "setCurrentStatus-status=" + status+",index="+index);
+            Logs.i(TAG, "setCurrentStatus-status=" + status + ",index=" + index);
             setCompoundDrawables(null, status == PSSDK.ControlStatus.Normal ? collectDrawable : collectedDrawable, null, null);
             setText(extraInfo.totalCollectCount + "");
             ShortUtils.followInsertOrDelete(getContext(), status != PSSDK.ControlStatus.Normal, shortPlay, index);
@@ -1303,11 +1376,14 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
     }
 
-    private class CustomOverlayView extends FrameLayout implements PSSDK.IControlView {
+    private class CustomOverlayView extends FrameLayout implements PSSDK.IControlView, DramaPlayActivity.ProgressChangeListener, ResolutionChangeListener {
 
         private final TextView chooseIndexTitleTV;
         private final TextView dramaTitleTV;
         private final TextView dramaDescTV;
+        private final SeekBar progressBar;
+//        private final TextView tvResolution;
+//        private final ImageView ivHd;
 
         public CustomOverlayView(Context context) {
             super(context);
@@ -1325,10 +1401,39 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             dramaTitleTV = findViewById(R.id.tv_overlay_drama_name);
             dramaDescTV = findViewById(R.id.tv_overlay_drama_desc);
 
+            /*ivHd = findViewById(R.id.iv_hd);
+            tvResolution = findViewById(R.id.tv_resolution);
+            tvResolution.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showChooseResolutionDialog();
+                }
+            });*/
             findViewById(R.id.iv_more).setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     showChooseResolutionDialog();
+                }
+            });
+
+            progressBar = findViewById(R.id.sb_overlay);
+            progressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+
+                }
+
+                @Override
+                public void onStartTrackingTouch(SeekBar seekBar) {
+
+                }
+
+                @Override
+                public void onStopTrackingTouch(SeekBar seekBar) {
+                    if (detailFragment != null) {
+                        detailFragment.setCurrentPlayTimeSeconds(seekBar.getProgress());
+                    }
                 }
             });
         }
@@ -1340,9 +1445,26 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         @Override
         public void bindItemData(ShortPlayFragment shortPlayFragment, ShortPlay shortPlay, int index) {
-            chooseIndexTitleTV.setText(shortPlay.total + "集 - " + shortPlay.title);
+            chooseIndexTitleTV.setText(shortPlay.total + getString(R.string.s_eps) + " - " + shortPlay.title);
             dramaTitleTV.setText(shortPlay.title);
             dramaDescTV.setText(shortPlay.desc);
+        }
+
+        @Override
+        public void onProgressChanged(int progress, int max) {
+            Logs.i(TAG, "onProgressChanged-progress=" + progress + ",max=" + max);
+            if (progressBar.getMax() != max) {
+                progressBar.setMax(max);
+            }
+            progressBar.setProgress(progress);
+        }
+
+        @Override
+        public void onResolutionChanged(String resoluton) {
+            Logs.i(TAG, "onResolutionChanged-resoluton=" + resoluton);
+            String resolutionString = currentResolution.toString();
+//            tvResolution.setText(resolutionString);
+//            ivHd.setVisibility(resolutionString.contains("1080") ? View.VISIBLE : View.GONE);
         }
     }
 }

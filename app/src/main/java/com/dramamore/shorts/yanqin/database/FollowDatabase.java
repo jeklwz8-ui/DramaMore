@@ -17,7 +17,7 @@ public abstract class FollowDatabase extends RoomDatabase {
 
     private static volatile FollowDatabase INSTANCE;
     // 定义一个固定的单线程池，专门给数据库用
-    public static final ExecutorService databaseWriteExecutor = Executors.newSingleThreadExecutor();
+    public static final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     // 关联你的 Dao
     public abstract FollowDao followDao();

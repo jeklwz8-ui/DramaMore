@@ -3,7 +3,6 @@
     <string name="s_follow">追剧</string>
     <string name="s_recommend">推荐</string>
     <string name="s_home">首页</string>
-    <string name="s_me">我的</string>
     <string name="s_eps">集</string>
     <string name="s_search_short">搜索短剧</string>
     <string name="s_search">搜索</string>
@@ -11,4 +10,13 @@
     <string name="s_more">更多</string>
     <string name="s_my_collect_shorts">我的追剧</string>
     <string name="s_saw_num">已观看到</string>
+    <string name="s_mine">我的</string>
+    <string name="s_dramamore">DramaMore</string>
+    <string name="s_vip">会员权益</string>
+    <string name="s_not_recharged">未充值</string>
+    <string name="s_tip1">高清画质，抢先享受\n没有广告，畅快体验</string>
+    <string name="s_tip2">精彩剧情下载本地\n新剧更新，优先享受</string>
+    <string name="s_select"><![CDATA[选集 >]]></string>
+    <string name="s_error">错误！</string>
+    <string name="s_clear_success">清除成功！</string>
 </resources>

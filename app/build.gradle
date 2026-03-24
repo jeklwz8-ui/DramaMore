@@ -55,6 +55,10 @@ android {
             abiFilters 'arm64-v8a','armeabi-v7a'
         }
     }
+
+    buildFeatures {
+        buildConfig true
+    }
 }
 
 dependencies {

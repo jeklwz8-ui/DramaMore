@@ -2,7 +2,32 @@
 <resources>
 
     <style name="Theme.FastShort" parent="Theme.AppCompat.DayNight.NoActionBar" />
-    <style name="Theme.FastShort.tran" parent="Theme.AppCompat.DayNight.NoActionBar">
-
+    <style name="TransparentTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- 设置窗口背景透明 -->
+        <item name="android:windowIsTranslucent">true</item>
+        <!-- 设置背景颜色或图片 -->
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <!-- 移除窗口阴影（可选） -->
+        <item name="android:windowContentOverlay">@null</item>
+        <!-- 允许背景变暗（可选） -->
+        <item name="android:backgroundDimEnabled">true</item>
     </style>
+
+    <style name="FullScreenDialog" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- 关键：必须 false -->
+        <item name="android:windowIsFloating">false</item>
+
+        <!-- 去掉默认背景边距 -->
+        <item name="android:windowBackground">@android:color/transparent</item>
+
+        <!-- 状态栏透明 -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+
+        <!-- 导航栏透明（可选） -->
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <!-- 允许画到系统栏 -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+
 </resources>

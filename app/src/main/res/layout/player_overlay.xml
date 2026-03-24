@@ -3,14 +3,43 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <ImageView
-        android:id="@+id/iv_more"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+     <ImageView
+         android:id="@+id/iv_more"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+         android:layout_gravity="right|top"
+         android:layout_marginTop="16dp"
+         android:layout_marginRight="16dp"
+         android:src="@drawable/config_more" />
+
+    <!--<FrameLayout
+        android:layout_width="100dp"
+        android:layout_height="40dp"
         android:layout_gravity="right|top"
         android:layout_marginTop="16dp"
         android:layout_marginRight="16dp"
-        android:src="@drawable/config_more" />
+        android:background="@drawable/bg_resolution_item">
+
+        <ImageView
+            android:id="@+id/iv_hd"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="5dp"
+            android:visibility="gone"
+            android:src="@drawable/ic_hd" />
+
+        <TextView
+            android:id="@+id/tv_resolution"
+            android:layout_width="100dp"
+            android:layout_height="40dp"
+            android:gravity="center"
+            android:text=""
+            android:layout_gravity="center"
+            android:textColor="@color/c_F44F3A"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </FrameLayout>-->
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -39,12 +68,23 @@
             android:textColor="#e6FFFFFF"
             android:textSize="12sp" />
 
+        <SeekBar
+            android:id="@+id/sb_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:maxHeight="4dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:progressDrawable="@drawable/custom_seekbar_track"
+            android:splitTrack="false"
+            android:thumb="@drawable/custom_thumb" />
+
         <LinearLayout
-            android:layout_marginTop="12dp"
             android:id="@+id/ll_choose_index"
             android:layout_width="match_parent"
             android:layout_height="36dp"
-            android:layout_marginBottom="4dp"
+            android:layout_marginTop="5dp"
             android:background="@drawable/bg_black_round_2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
@@ -71,7 +111,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:alpha="0.8"
-                android:text="Select >"
+                android:text="@string/s_select"
                 android:textColor="@android:color/white"
                 android:textSize="12sp" />
         </LinearLayout>

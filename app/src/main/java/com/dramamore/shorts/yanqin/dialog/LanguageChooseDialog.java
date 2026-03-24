@@ -30,17 +30,17 @@ import java.util.Map;
 public class LanguageChooseDialog extends DialogFragment {
     private static final HashMap<String, String> languageDisplayNames = new HashMap<>();
 
-    static {
-        languageDisplayNames.put("zh_hans", "简体中文");
-        languageDisplayNames.put("zh_hant", "繁体中文");
-        languageDisplayNames.put("en", "英语");
-        languageDisplayNames.put("vi", "越南语");
-        languageDisplayNames.put("in", "印尼语");
-        languageDisplayNames.put("th", "泰语");
-        languageDisplayNames.put("ja", "日语");
-        languageDisplayNames.put("ko", "韩语");
-        languageDisplayNames.put("pt", "葡萄牙语");
-        languageDisplayNames.put("ar", "阿拉伯语");
+    public void initLangStr(){
+        languageDisplayNames.put("zh_hans", getString(R.string.s_zh_hans));
+        languageDisplayNames.put("zh_hant", getString(R.string.s_zh_hant));
+        languageDisplayNames.put("en", getString(R.string.s_en));
+        languageDisplayNames.put("vi", getString(R.string.s_vi));
+        languageDisplayNames.put("in", getString(R.string.s_in));
+        languageDisplayNames.put("th", getString(R.string.s_th));
+        languageDisplayNames.put("ja", getString(R.string.s_ja));
+        languageDisplayNames.put("ko", getString(R.string.s_ko));
+        languageDisplayNames.put("pt", getString(R.string.s_pt));
+        languageDisplayNames.put("ar", getString(R.string.s_ar));
     }
 
     private final List<CheckBox> checkBoxes = new ArrayList<>();
@@ -50,6 +50,7 @@ public class LanguageChooseDialog extends DialogFragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setStyle(STYLE_NORMAL, R.style.FullScreenDialog);
+        initLangStr();
 
     }
     @Nullable

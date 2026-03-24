@@ -61,7 +61,7 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
         titleTV.setText(shortPlay.title);
 
         TextView descTV = findViewById(R.id.tv_shortplay_desc);
-        descTV.setText("Finished | " + shortPlay.total + " Eps");
+        descTV.setText(getContext().getString(R.string.s_finish)+" | " + shortPlay.total + " "+getContext().getString(R.string.s_eps));
 
         findViewById(R.id.iv_close).setOnClickListener(new View.OnClickListener() {
             @Override

@@ -4,6 +4,7 @@
     <string name="s_recommend">推荐</string>
     <string name="s_home">首页</string>
     <string name="s_eps">集</string>
+    <string name="s_finish">完结</string>
     <string name="s_search_short">搜索短剧</string>
     <string name="s_search">搜索</string>
     <string name="s_hot_short">热播短剧</string>
@@ -19,4 +20,21 @@
     <string name="s_select"><![CDATA[选集 >]]></string>
     <string name="s_error">错误！</string>
     <string name="s_clear_success">清除成功！</string>
+    <string name="s_play_his">观看记录</string>
+    <string name="s_lang_set">语言设置</string>
+    <string name="s_protocol">隐私协议</string>
+    <string name="s_clear">清除缓存</string>
+    <string name="s_version">版本信息</string>
+    <string name="s_sure">确定</string>
+
+    <string name="s_zh_hans">简体中文</string>
+    <string name="s_zh_hant">繁体中文</string>
+    <string name="s_en">英语</string>
+    <string name="s_vi">越南语</string>
+    <string name="s_in">印尼语</string>
+    <string name="s_th">泰语</string>
+    <string name="s_ja">日语</string>
+    <string name="s_ko">韩语</string>
+    <string name="s_pt">葡萄牙语</string>
+    <string name="s_ar">阿拉伯语</string>
 </resources>

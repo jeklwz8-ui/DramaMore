@@ -353,7 +353,7 @@ public class RecommendFragment extends Fragment {
                     CustomOverlayView customOverlayView = new CustomOverlayView(activity);
                     params=new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
                     customOverlayView.setLayoutParams(params);
-                    params.bottomMargin = DpUtils.dp2px(activity, 5);
+                    params.bottomMargin = DpUtils.dp2px(activity, 20);
                     views.add(customOverlayView);
                     progressChangeListener = customOverlayView;
 

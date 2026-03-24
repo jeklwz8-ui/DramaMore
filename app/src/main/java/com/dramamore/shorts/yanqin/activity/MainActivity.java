@@ -27,9 +27,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 建议在 onCreate 顶部调用
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-// 设置状态栏颜色为透明
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         setContentView(R.layout.activity_main);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -37,12 +35,10 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-        /*ImmersionBar.with(this)
-                .transparentStatusBar()     // 状态栏透明
-                .statusBarDarkFont(true)   // 黑色文字
-                .fitsSystemWindows(false)  // 内容延伸到状态栏
-                .init();*/
 
+        BottomNavigationView navView = findViewById(R.id.bottom_navigation);
+        navView.setOnApplyWindowInsetsListener(null);
+        navView.setPadding(0, 0, 0, 0);
 
         initFragment();
     }

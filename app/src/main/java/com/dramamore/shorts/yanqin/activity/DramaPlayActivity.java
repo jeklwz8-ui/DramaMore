@@ -129,11 +129,8 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 建议在 onCreate 顶部调用
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-        // 设置状态栏颜色为透明
         getWindow().setStatusBarColor(Color.TRANSPARENT);
-        EdgeToEdge.enable(this);
 
         Intent intent = getIntent();
         Parcelable parcelableShortPlay = intent.getParcelableExtra(EXTRA_SHORT_PLAY);
@@ -437,7 +434,9 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 CustomProgressBar customProgressBar = new CustomProgressBar(getApplicationContext());
                 FrameLayout.LayoutParams lpProgressBar = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                 lpProgressBar.gravity = Gravity.BOTTOM;
-                lpProgressBar.bottomMargin = DpUtils.dp2px(getApplicationContext(), 70);
+                lpProgressBar.leftMargin=DpUtils.dp2px(getApplicationContext(), 20);
+                lpProgressBar.rightMargin=DpUtils.dp2px(getApplicationContext(), 20);
+                lpProgressBar.bottomMargin = DpUtils.dp2px(getApplicationContext(), 60);
                 customProgressBar.setLayoutParams(lpProgressBar);
                 views.add(customProgressBar);
 

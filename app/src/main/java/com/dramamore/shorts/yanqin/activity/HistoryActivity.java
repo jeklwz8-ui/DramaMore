@@ -51,11 +51,8 @@ public class HistoryActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // 建议在 onCreate 顶部调用
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-// 设置状态栏颜色为透明
         getWindow().setStatusBarColor(Color.TRANSPARENT);
-//        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_history);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.history), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());

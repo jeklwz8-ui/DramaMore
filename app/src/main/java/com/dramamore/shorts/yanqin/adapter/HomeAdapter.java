@@ -98,13 +98,7 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
             });
             if (bannerDataList != null) {
-
-                bannerManager = new BannerManager(
-                        headerViewHolder.bannerPager,
-                        headerViewHolder.indicatorLayout,
-                        bannerDataList
-                );
-
+                headerViewHolder.bannerManager.updateData(bannerDataList);
             }
             if (hotDataList != null) {
                 for (int i = 0; i < hotDataList.size(); i++) {
@@ -179,11 +173,14 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         LinearLayout llHot;
         FrameLayout flSearch;
         TextView tvHotMore;
+        BannerManager bannerManager;
 
         public HeaderViewHolder(@NonNull View itemView) {
             super(itemView);
             bannerPager = itemView.findViewById(R.id.bannerPager);
             indicatorLayout = itemView.findViewById(R.id.indicatorLayout);
+            List<ShortPlay> bannerDatas = new ArrayList<>();
+            bannerManager = new BannerManager(bannerPager,indicatorLayout, bannerDatas);
 
             llHot = itemView.findViewById(R.id.ll_hot);
             flSearch = itemView.findViewById(R.id.fl_search);

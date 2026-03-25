@@ -25,23 +25,18 @@ public class BannerManager {
     BannerAdapter adapter;
 
     public BannerManager(ViewPager2 pager, LinearLayout indicator, List<ShortPlay> list) {
-        if (list == null || list.isEmpty()) {
-            return;
-        }
-
         viewPager = pager;
-        if (indicatorLayout!=null) {
-            indicatorLayout.removeAllViews();
-        }
         indicatorLayout = indicator;
         images.clear();
         images.addAll(list);
 
-        BannerAdapter adapter = new BannerAdapter(pager.getContext(), list);
+        adapter = new BannerAdapter(pager.getContext(), images);
         viewPager.setAdapter(adapter);
 
         int start = Integer.MAX_VALUE / 2;
-        start = start - start % images.size();
+        if (!images.isEmpty()) {
+            start = start - start % images.size();
+        }
 
         viewPager.setCurrentItem(start);
 
@@ -52,8 +47,10 @@ public class BannerManager {
             @Override
             public void onPageSelected(int position) {
 
-                int real = position % images.size();
-                updateIndicators(real);
+                if (!images.isEmpty()) {
+                    int real = position % images.size();
+                    updateIndicators(real);
+                }
             }
 
             @Override

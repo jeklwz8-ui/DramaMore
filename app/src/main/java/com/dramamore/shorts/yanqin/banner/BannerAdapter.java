@@ -17,10 +17,12 @@ import com.bytedance.sdk.shortplay.api.ShortPlay;
 import java.util.List;
 
 import com.dramamore.shorts.yanqin.activity.DramaPlayActivity;
+import com.dramamore.shorts.yanqin.utils.Logs;
 import com.dramamore.shorts.yanqin.utils.ShortUtils;
 
 public class BannerAdapter extends RecyclerView.Adapter<BannerAdapter.ViewHolder> {
 
+    private static final String TAG = "BannerAdapter";
     private List<ShortPlay> images;
     private Context context;
 
@@ -36,6 +38,8 @@ public class BannerAdapter extends RecyclerView.Adapter<BannerAdapter.ViewHolder
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
+        Logs.i(TAG,"onBindViewHolder-pos="+position+",size="+images.size());
+        if(images.isEmpty())return;
         int realPosition = position % images.size();
         Glide.with(context)
                 .load(images.get(realPosition).coverImage)

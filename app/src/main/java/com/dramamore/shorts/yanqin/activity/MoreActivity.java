@@ -1,5 +1,7 @@
 package com.dramamore.shorts.yanqin.activity;
 
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
@@ -30,12 +32,21 @@ import com.dramamore.shorts.yanqin.utils.Logs;
 public class MoreActivity extends AppCompatActivity {
 
     private static final String TAG = "MoreActivity";
+    private static final String EXTRA_TYPE = "extra_type";
+    private static final String EXTRA_TITLE = "extra_title";
     private int currentPage = 1;
     private boolean hasMore = false;
     private boolean isLoading = false;
     private ShortPlayAdapter adapter;
     private TextView tvTitle;
     private int type;
+
+    public static void start(Context context,int type,String title){
+        Intent intent = new Intent(context, MoreActivity.class);
+        intent.putExtra(EXTRA_TYPE, type);
+        intent.putExtra(EXTRA_TITLE, title);
+        context.startActivity(intent);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,8 +70,8 @@ public class MoreActivity extends AppCompatActivity {
         });
         initRecyclerView();
 
-        type = getIntent().getIntExtra("type", 0);
-        String title = getIntent().getStringExtra("title");
+        type = getIntent().getIntExtra(EXTRA_TYPE, 0);
+        String title = getIntent().getStringExtra(EXTRA_TITLE);
         tvTitle.setText(title);
         Logs.i(TAG, "loadMoreData-type=" + type + ",title=" + title);
     }
@@ -106,10 +117,12 @@ public class MoreActivity extends AppCompatActivity {
 
     private void loadMoreData() {
         isLoading = true;
-        if (type == 1) {
+        if (type == 1) {//热播短剧
             PSSDK.requestPopularDrama(currentPage, 20, Arrays.asList(5L), feedListLoadResult);
-        } else {
-            PSSDK.requestFeedList(currentPage, 20, feedListLoadResult);
+        } else if(type==2) {//收藏最多
+            PSSDK.requestDramaByTag(4, currentPage, 20, feedListLoadResult);
+        }else if(type==3){//动漫短剧
+            PSSDK.requestFeedListByCategoryIds(Arrays.asList(1000701l), null, currentPage, 20,feedListLoadResult);
         }
     }
 

@@ -33,6 +33,8 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private List<ShortPlay> dataList = new ArrayList<>();
     private List<ShortPlay> bannerDataList = new ArrayList<>();
     private List<ShortPlay> hotDataList = new ArrayList<>();
+    private List<ShortPlay> mostDataList = new ArrayList<>();
+    private List<ShortPlay> cartoonDataList = new ArrayList<>();
     private BannerManager bannerManager;
 
     public void setData(List<ShortPlay> list) {
@@ -48,15 +50,34 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         notifyItemRangeInserted(startPos, list.size());
     }
 
-    public void setHeaderData(List<ShortPlay> newBanners, List<ShortPlay> newHots) {
+    public void setHeaderBannerData(List<ShortPlay> newBanners) {
         if (newBanners != null) {
             this.bannerDataList.clear();
             bannerDataList.addAll(newBanners);
             notifyItemChanged(0);
         }
+    }
+
+    public void setHeaderHotData(List<ShortPlay> newHots) {
         if (newHots != null) {
             this.hotDataList.clear();
             hotDataList.addAll(newHots);
+            notifyItemChanged(0);
+        }
+    }
+
+    public void setHeaderMostData(List<ShortPlay> shortPlayList) {
+        if (shortPlayList != null) {
+            this.mostDataList.clear();
+            mostDataList.addAll(shortPlayList);
+            notifyItemChanged(0);
+        }
+    }
+
+    public void setHeaderCartoonData(List<ShortPlay> shortPlayList) {
+        if (shortPlayList != null) {
+            this.cartoonDataList.clear();
+            cartoonDataList.addAll(shortPlayList);
             notifyItemChanged(0);
         }
     }
@@ -91,10 +112,19 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             headerViewHolder.tvHotMore.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    Intent intent = new Intent(holder.itemView.getContext(), MoreActivity.class);
-                    intent.putExtra("type", 1);
-                    intent.putExtra("title", holder.itemView.getContext().getString(R.string.s_hot_short));
-                    holder.itemView.getContext().startActivity(intent);
+                    MoreActivity.start(holder.itemView.getContext(), 1, holder.itemView.getContext().getString(R.string.s_hot_short));
+                }
+            });
+            headerViewHolder.tvMostMore.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    MoreActivity.start(holder.itemView.getContext(), 2, holder.itemView.getContext().getString(R.string.s_most));
+                }
+            });
+            headerViewHolder.tvCartoonMore.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    MoreActivity.start(holder.itemView.getContext(), 3, holder.itemView.getContext().getString(R.string.s_cartoon));
                 }
             });
             if (bannerDataList != null) {
@@ -104,24 +134,78 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 for (int i = 0; i < hotDataList.size(); i++) {
                     ShortPlay shortPlay = hotDataList.get(i);
                     View childAt = headerViewHolder.llHot.getChildAt(i);
-                    childAt.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            DramaPlayActivity.start((AppCompatActivity) holder.itemView.getContext(), shortPlay);
-                        }
-                    });
-                    RoundImageView imageView = childAt.findViewById(R.id.ic_cover);
-                    imageView.setRadius(10);
-                    Glide.with(holder.itemView.getContext())
-                            .load(shortPlay.coverImage)
-                            .diskCacheStrategy(DiskCacheStrategy.ALL)
-                            .into(imageView);
-                    TextView tvHotValue = childAt.findViewById(R.id.tv_hot_value);
-                    tvHotValue.setText(ShortUtils.convertToK(shortPlay.totalCollectCount));
-                    TextView tvEpisode = childAt.findViewById(R.id.tv_episode);
-                    tvEpisode.setText(shortPlay.total + holder.itemView.getContext().getString(R.string.s_eps));
-                    TextView tvName = childAt.findViewById(R.id.tv_name);
-                    tvName.setText(shortPlay.title);
+                    if (childAt != null) {
+                        childAt.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                DramaPlayActivity.start((AppCompatActivity) holder.itemView.getContext(), shortPlay);
+                            }
+                        });
+                        RoundImageView imageView = childAt.findViewById(R.id.ic_cover);
+                        imageView.setRadius(10);
+                        Glide.with(holder.itemView.getContext())
+                                .load(shortPlay.coverImage)
+                                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                .into(imageView);
+                        TextView tvHotValue = childAt.findViewById(R.id.tv_hot_value);
+                        tvHotValue.setText(ShortUtils.convertToK(shortPlay.totalCollectCount));
+                        TextView tvEpisode = childAt.findViewById(R.id.tv_episode);
+                        tvEpisode.setText(shortPlay.total + holder.itemView.getContext().getString(R.string.s_eps));
+                        TextView tvName = childAt.findViewById(R.id.tv_name);
+                        tvName.setText(shortPlay.title);
+                    }
+                }
+            }
+            if (mostDataList != null) {
+                for (int i = 0; i < mostDataList.size(); i++) {
+                    ShortPlay shortPlay = mostDataList.get(i);
+                    View childAt = headerViewHolder.llMost.getChildAt(i);
+                    if (childAt != null) {
+                        childAt.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                DramaPlayActivity.start((AppCompatActivity) holder.itemView.getContext(), shortPlay);
+                            }
+                        });
+                        RoundImageView imageView = childAt.findViewById(R.id.ic_cover);
+                        imageView.setRadius(10);
+                        Glide.with(holder.itemView.getContext())
+                                .load(shortPlay.coverImage)
+                                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                .into(imageView);
+                        TextView tvHotValue = childAt.findViewById(R.id.tv_hot_value);
+                        tvHotValue.setText(ShortUtils.convertToK(shortPlay.totalCollectCount));
+                        TextView tvEpisode = childAt.findViewById(R.id.tv_episode);
+                        tvEpisode.setText(shortPlay.total + holder.itemView.getContext().getString(R.string.s_eps));
+                        TextView tvName = childAt.findViewById(R.id.tv_name);
+                        tvName.setText(shortPlay.title);
+                    }
+                }
+            }
+            if (cartoonDataList != null) {
+                for (int i = 0; i < cartoonDataList.size(); i++) {
+                    ShortPlay shortPlay = cartoonDataList.get(i);
+                    View childAt = headerViewHolder.llCartoon.getChildAt(i);
+                    if (childAt != null) {
+                        childAt.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                DramaPlayActivity.start((AppCompatActivity) holder.itemView.getContext(), shortPlay);
+                            }
+                        });
+                        RoundImageView imageView = childAt.findViewById(R.id.ic_cover);
+                        imageView.setRadius(10);
+                        Glide.with(holder.itemView.getContext())
+                                .load(shortPlay.coverImage)
+                                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                .into(imageView);
+                        TextView tvHotValue = childAt.findViewById(R.id.tv_hot_value);
+                        tvHotValue.setText(ShortUtils.convertToK(shortPlay.totalCollectCount));
+                        TextView tvEpisode = childAt.findViewById(R.id.tv_episode);
+                        tvEpisode.setText(shortPlay.total + holder.itemView.getContext().getString(R.string.s_eps));
+                        TextView tvName = childAt.findViewById(R.id.tv_name);
+                        tvName.setText(shortPlay.title);
+                    }
                 }
             }
         } else {
@@ -171,8 +255,12 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         ViewPager2 bannerPager;
         LinearLayout indicatorLayout;
         LinearLayout llHot;
-        FrameLayout flSearch;
+        LinearLayout llMost;
+        LinearLayout llCartoon;
         TextView tvHotMore;
+        TextView tvMostMore;
+        TextView tvCartoonMore;
+        FrameLayout flSearch;
         BannerManager bannerManager;
 
         public HeaderViewHolder(@NonNull View itemView) {
@@ -180,11 +268,17 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             bannerPager = itemView.findViewById(R.id.bannerPager);
             indicatorLayout = itemView.findViewById(R.id.indicatorLayout);
             List<ShortPlay> bannerDatas = new ArrayList<>();
-            bannerManager = new BannerManager(bannerPager,indicatorLayout, bannerDatas);
+            bannerManager = new BannerManager(bannerPager, indicatorLayout, bannerDatas);
 
-            llHot = itemView.findViewById(R.id.ll_hot);
             flSearch = itemView.findViewById(R.id.fl_search);
+            llHot = itemView.findViewById(R.id.ll_hot);
             tvHotMore = itemView.findViewById(R.id.tv_hot_more);
+
+            llMost = itemView.findViewById(R.id.ll_most);
+            tvMostMore = itemView.findViewById(R.id.tv_most_more);
+
+            llCartoon = itemView.findViewById(R.id.ll_cartoon);
+            tvCartoonMore = itemView.findViewById(R.id.tv_cartoon_more);
         }
     }
 }

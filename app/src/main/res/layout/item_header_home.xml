@@ -35,7 +35,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp">
 
-        <RelativeLayout
+        <com.dramamore.shorts.yanqin.widget.ViewPager2Parent
             android:layout_width="match_parent"
             android:layout_height="450dp">
 
@@ -48,12 +48,11 @@
                 android:id="@+id/indicatorLayout"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentBottom="true"
-                android:layout_centerHorizontal="true"
+                android:layout_gravity="center_horizontal|bottom"
                 android:layout_marginBottom="10dp"
                 android:orientation="horizontal" />
 
-        </RelativeLayout>
+        </com.dramamore.shorts.yanqin.widget.ViewPager2Parent>
 
         <TextView
             android:layout_width="wrap_content"
@@ -94,6 +93,114 @@
 
     <LinearLayout
         android:id="@+id/ll_hot"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal">
+
+        <include
+            layout="@layout/item_card_layout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <include
+            layout="@layout/item_card_layout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:layout_weight="1" />
+
+        <include
+            layout="@layout/item_card_layout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:drawableLeft="@drawable/ic_hot"
+            android:drawablePadding="10dp"
+            android:text="@string/s_most"
+            android:textColor="@android:color/white" />
+
+        <TextView
+            android:id="@+id/tv_most_more"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical|end"
+            android:drawableEnd="@drawable/ic_more"
+            android:drawablePadding="10dp"
+            android:text="@string/s_more"
+            android:textColor="@android:color/white" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/ll_most"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal">
+
+        <include
+            layout="@layout/item_card_layout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+        <include
+            layout="@layout/item_card_layout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="10dp"
+            android:layout_weight="1" />
+
+        <include
+            layout="@layout/item_card_layout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1" />
+
+    </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:drawableLeft="@drawable/ic_hot"
+            android:drawablePadding="10dp"
+            android:text="@string/s_cartoon"
+            android:textColor="@android:color/white" />
+
+        <TextView
+            android:id="@+id/tv_cartoon_more"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical|end"
+            android:drawableEnd="@drawable/ic_more"
+            android:drawablePadding="10dp"
+            android:text="@string/s_more"
+            android:textColor="@android:color/white" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/ll_cartoon"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"

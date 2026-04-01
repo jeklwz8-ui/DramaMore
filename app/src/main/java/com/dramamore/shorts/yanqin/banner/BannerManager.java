@@ -2,9 +2,11 @@ package com.dramamore.shorts.yanqin.banner;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
+import androidx.annotation.NonNull;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.bytedance.sdk.shortplay.api.ShortPlay;
@@ -13,9 +15,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.dramamore.shorts.yanqin.R;
+import com.dramamore.shorts.yanqin.utils.Logs;
+import com.dramamore.shorts.yanqin.widget.ViewPager2Parent;
 
 public class BannerManager {
 
+    private static final String TAG = "BannerManager";
     private ViewPager2 viewPager;
     private LinearLayout indicatorLayout;
     private Handler handler = new Handler(Looper.getMainLooper());
@@ -23,7 +28,7 @@ public class BannerManager {
     private Runnable runnable;
     private List<ShortPlay> images = new ArrayList<>();
     BannerAdapter adapter;
-
+    private boolean isAttached = false; // 记录状态
     public BannerManager(ViewPager2 pager, LinearLayout indicator, List<ShortPlay> list) {
         viewPager = pager;
         indicatorLayout = indicator;
@@ -61,6 +66,18 @@ public class BannerManager {
 
                 if (state == ViewPager2.SCROLL_STATE_IDLE) {
                     start(); // 滑动结束恢复轮播
+                }
+            }
+        });
+
+        ((ViewPager2Parent) viewPager.getParent()).setOnWindowVisibilityChangeListener(new ViewPager2Parent.OnWindowVisibilityChangeListener() {
+            @Override
+            public void onVisibilityChanged(int visibility) {
+                Logs.i(TAG, "onVisibilityChanged-visibility=" + visibility);
+                if(visibility==View.VISIBLE){
+                    start();
+                }else{
+                    stop();
                 }
             }
         });
@@ -126,8 +143,10 @@ public class BannerManager {
         runnable = new Runnable() {
             @Override
             public void run() {
-
-                viewPager.setCurrentItem(viewPager.getCurrentItem() + 1);
+                Logs.i(TAG, "startAutoScroll-WindowVisibility=" + viewPager.getWindowVisibility());
+                if (viewPager.getWindowVisibility() == View.VISIBLE) {
+                    viewPager.setCurrentItem(viewPager.getCurrentItem() + 1);
+                }
                 handler.postDelayed(this, 3000);
             }
         };

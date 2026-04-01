@@ -34,11 +34,9 @@ public class HomeFragment extends Fragment {
     private boolean hasMore = false;
     private boolean isLoading = false;
     private HomeAdapter adapter;
+    private boolean isInitBannerData, isInitHotData, isInitMostData, isInitCartoonData;
 
-    private boolean isInitNewData, isInitHotData, is;
-
-
-    private void initNewData() {
+    private void initBannerData() {
         PSSDK.requestNewDrama(1, 5, new PSSDK.FeedListResultListener() {
             @Override
             public void onFail(PSSDK.ErrorInfo errorInfo) {
@@ -47,18 +45,12 @@ public class HomeFragment extends Fragment {
 
             @Override
             public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> feedListLoadResult) {
-                isInitNewData = true;
                 Logs.i(TAG, "initNewData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString() + ",size=" + feedListLoadResult.dataList.size());
-
+                isInitBannerData = true;
                 getActivity().runOnUiThread(() -> {
-                    if(adapter!=null){
-                        adapter.setHeaderData(feedListLoadResult.dataList,null);
+                    if (adapter != null) {
+                        adapter.setHeaderBannerData(feedListLoadResult.dataList);
                     }
-                    /*BannerManager banner = new BannerManager(
-                            bannerPager,
-                            indicatorLayout,
-                            feedListLoadResult.dataList
-                    );*/
                 });
             }
         });
@@ -73,35 +65,54 @@ public class HomeFragment extends Fragment {
 
             @Override
             public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> feedListLoadResult) {
-                isInitHotData = true;
                 Logs.i(TAG, "initHotData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString());
-
+                isInitHotData = true;
                 getActivity().runOnUiThread(() -> {
-                    if(adapter!=null){
-                        adapter.setHeaderData(null,feedListLoadResult.dataList);
+                    if (adapter != null) {
+                        adapter.setHeaderHotData(feedListLoadResult.dataList);
                     }
-                    /*for (int i = 0; i < llHot.getChildCount(); i++) {
-                        ShortPlay shortPlay = feedListLoadResult.dataList.get(i);
-                        View childAt = llHot.getChildAt(i);
-                        childAt.setOnClickListener(new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                ShortUtils.play((AppCompatActivity) getActivity(), shortPlay);
-                            }
-                        });
-                        RoundImageView imageView = childAt.findViewById(R.id.ic_cover);
-                        imageView.setRadius(10);
-                        Glide.with(getActivity())
-                                .load(shortPlay.coverImage)
-                                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                                .into(imageView);
-                        TextView tvHotValue = childAt.findViewById(R.id.tv_hot_value);
-                        tvHotValue.setText(ShortUtils.convertToK(shortPlay.totalCollectCount));
-                        TextView tvEpisode = childAt.findViewById(R.id.tv_episode);
-                        tvEpisode.setText(shortPlay.total + getString(R.string.s_eps));
-                        TextView tvName = childAt.findViewById(R.id.tv_name);
-                        tvName.setText(shortPlay.title);
-                    }*/
+                });
+            }
+        });
+    }
+
+    //近期最多收藏
+    private void initMostData() {
+        PSSDK.requestDramaByTag(4, 1, 3, new PSSDK.FeedListResultListener() {
+            @Override
+            public void onFail(PSSDK.ErrorInfo errorInfo) {
+                Logs.i(TAG, "initMostData-onFail-errorInfo=" + errorInfo);
+            }
+
+            @Override
+            public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> feedListLoadResult) {
+                Logs.i(TAG, "initMostData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString());
+                isInitMostData = true;
+                getActivity().runOnUiThread(() -> {
+                    if (adapter != null) {
+                        adapter.setHeaderMostData(feedListLoadResult.dataList);
+                    }
+                });
+            }
+        });
+    }
+
+    //动漫剧
+    private void initCartoonData() {
+        PSSDK.requestFeedListByCategoryIds(Arrays.asList(1000701l), null, 1, 3, new PSSDK.FeedListResultListener() {
+            @Override
+            public void onFail(PSSDK.ErrorInfo errorInfo) {
+                Logs.i(TAG, "initCartoonData-onFail-errorInfo=" + errorInfo);
+            }
+
+            @Override
+            public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> feedListLoadResult) {
+                Logs.i(TAG, "initCartoonData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString());
+                isInitCartoonData = true;
+                getActivity().runOnUiThread(() -> {
+                    if (adapter != null) {
+                        adapter.setHeaderCartoonData(feedListLoadResult.dataList);
+                    }
                 });
             }
         });
@@ -110,10 +121,8 @@ public class HomeFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        // 建议创建对应的 layout 文件：fragment_home.xml
         View view = inflater.inflate(R.layout.fragment_home, container, false);
 
-        initView(view);
         initRecyclerView(view);
         return view;
     }
@@ -122,47 +131,22 @@ public class HomeFragment extends Fragment {
     public void onResume() {
         super.onResume();
 
-        if (!isInitNewData) {
-            initNewData();
+        if (!isInitBannerData) {
+            initBannerData();
         }
         if (!isInitHotData) {
             initHotData();
+        }
+        if (!isInitMostData) {
+            initMostData();
+        }
+        if (!isInitCartoonData) {
+            initCartoonData();
         }
 
         if (!isLoading && currentPage == 1) {
             loadMoreData();
         }
-    }
-
-    private void initView(View view) {
-        /*bannerPager = view.findViewById(R.id.bannerPager);
-        indicatorLayout = view.findViewById(R.id.indicatorLayout);
-
-        llHot = view.findViewById(R.id.ll_hot);
-        view.findViewById(R.id.fl_search).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                getActivity().startActivity(new Intent(getActivity(), SearchActivity.class));
-            }
-        });*/
-//        TextView tvHotMore = view.findViewById(R.id.tv_hot_more);
-//        tvHotMore.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                /*MoreFragment moreFragment = new MoreFragment();
-//                Bundle bundle=new Bundle();
-//                bundle.putInt("type",1);
-//                bundle.putString("title",getString(R.string.s_hot_short));
-//                moreFragment.setArguments(bundle);
-//                FragmentUtils.switchFragment((AppCompatActivity) getActivity(),moreFragment);*/
-//
-//                Intent intent = new Intent(getActivity(), MoreActivity.class);
-//                intent.putExtra("type", 1);
-//                intent.putExtra("title", getString(R.string.s_hot_short));
-//                getActivity().startActivity(intent);
-//            }
-//        });
-
     }
 
     private void initRecyclerView(View view) {

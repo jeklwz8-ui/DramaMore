@@ -108,5 +108,21 @@ dependencies {
     // Demo里使用GSON测试ShortPlay的序列化兼容性
     implementation 'com.google.code.gson:gson:2.11.0'
 
+    // TOPON Core
+//    implementation 'com.anythink.sdk:core:6.5.50'
+
+    // Banner
+//    implementation 'com.anythink.sdk:banner:6.3.27'
+
+    // AdMob adapter
+//    implementation 'com.anythink.sdk:admob:6.3.27'
+
+//    implementation "com.google.android.gms:play-services-ads"
+
+    // Google Mobile Ads
+//    implementation 'com.google.android.gms:play-services-ads:6.3.27'
+
+
+
 //    implementation project(':demolib')
 }

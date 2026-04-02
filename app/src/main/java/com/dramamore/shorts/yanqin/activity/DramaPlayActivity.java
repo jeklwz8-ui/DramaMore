@@ -91,7 +91,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private static final String[] PLAY_SPEED_LABELS = new String[]{"1.0x", "1.25x", "1.5x", "2.0x"};
     private final List<PAGNativeAd> feedAds = new ArrayList<>();
     /**
-     * 已解锁的剧集
+     * 宸茶В閿佺殑鍓ч泦
      */
     private final SparseIntArray unlockedIndexes = new SparseIntArray();
     private final PlayHistoryHelper.PlayHistory playHistory = new PlayHistoryHelper.PlayHistory();
@@ -144,7 +144,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         shortPlay = (ShortPlay) parcelableShortPlay;
 
-        // 测试gson序列化的兼容性
+        // 娴嬭瘯gson搴忓垪鍖栫殑鍏煎鎬?
         Gson gson = new Gson();
         String json = gson.toJson(shortPlay);
         shortPlay = gson.fromJson(json, ShortPlay.class);
@@ -162,9 +162,14 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             return insets;
         });
 
-        // 预加载信息流广告
-        loadPangleFeedAd();
-        loadRewardAd(null);
+        // 棰勫姞杞戒俊鎭祦骞垮憡
+        App.ensurePangleAdsSdkInit(getApplicationContext(), () -> {
+            if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+                return;
+            }
+            loadPangleFeedAd();
+            loadRewardAd(null);
+        });
 
         HistoryDatabase.executor.execute(new Runnable() {
             @Override
@@ -192,7 +197,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     }
 
     private void showDetailFragment(ShortPlay shortPlay, int startFromIndex, int startFromSeconds) {
-        // 默认前5集解锁
+        // 榛樿鍓?闆嗚В閿?
         for (int i = 1; i <= 5; i++) {
             unlockedIndexes.put(i, 1);
         }
@@ -202,9 +207,9 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         builder.displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_TITLE, false);
         builder.displayProgressBar(false);
         builder.startPlayIndex(startFromIndex);
-        builder.enableImmersiveMode(10000) // 【可选】播放页无操作xxxms后隐藏文字进入沉浸式模式，默认不启用此功能，启用时可指定时间
-                .playSingleItem(false); // 【可选】只播放一集模式，用于在开发者用多个播放页Fragment对象构造滑动切剧场景时，默认false
-        // 开启自动播放下一集
+        builder.enableImmersiveMode(10000) // 銆愬彲閫夈€戞挱鏀鹃〉鏃犳搷浣渪xxms鍚庨殣钘忔枃瀛楄繘鍏ユ矇娴稿紡妯″紡锛岄粯璁や笉鍚敤姝ゅ姛鑳斤紝鍚敤鏃跺彲鎸囧畾鏃堕棿
+                .playSingleItem(false); // 銆愬彲閫夈€戝彧鎾斁涓€闆嗘ā寮忥紝鐢ㄤ簬鍦ㄥ紑鍙戣€呯敤澶氫釜鎾斁椤礔ragment瀵硅薄鏋勯€犳粦鍔ㄥ垏鍓у満鏅椂锛岄粯璁alse
+        // 寮€鍚嚜鍔ㄦ挱鏀句笅涓€闆?
         builder.enableAutoPlayNext(true);
         builder.startPlayAtTimeSeconds(startFromSeconds);
         builder.hideLeftTopCloseAndTitle(false, new PSSDK.ShortPlayDetailPageCloseListener() {
@@ -215,12 +220,12 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             }
         });
 
-        // 配置广告策略
+        // 閰嶇疆骞垮憡绛栫暐
         builder.adCustomProvider(new PSSDK.AdCustomProvider() {
             @Override
             public List<Integer> getDetailDrawAdPositions() {
                 ArrayList<Integer> integers = new ArrayList<>();
-                // 在第1集、第3集、第50集后面插入广告
+                // 鍦ㄧ1闆嗐€佺3闆嗐€佺50闆嗗悗闈㈡彃鍏ュ箍鍛?
                         /*integers.add(1);
                         integers.add(3);
                         integers.add(50);*/
@@ -232,20 +237,20 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 return new PSSDK.DrawAdProvider() {
                     @Override
                     public void onPrepareAd() {
-                        // 快划到广告插入位置时调用，可以在这里请求广告
+                        // 蹇垝鍒板箍鍛婃彃鍏ヤ綅缃椂璋冪敤锛屽彲浠ュ湪杩欓噷璇锋眰骞垮憡
                         loadPangleFeedAd();
                     }
 
                     @Override
                     public View onObtainAdView(int position, int index) {
-                        // 返回广告View，如没有可用广告则返回null
+                        // 杩斿洖骞垮憡View锛屽娌℃湁鍙敤骞垮憡鍒欒繑鍥瀗ull
                         //return createFeedAdView();
                         return null;
                     }
 
                     @Override
                     public void onDestroy() {
-                        // 播放页退出时调用，可在这里释放广告资源
+                        // 鎾斁椤甸€€鍑烘椂璋冪敤锛屽彲鍦ㄨ繖閲岄噴鏀惧箍鍛婅祫婧?
                     }
                 };
             }
@@ -262,7 +267,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             @Override
             public void onProgressChange(ShortPlay shortPlay, int index, int currentPlayTimeInSeconds, int durationInSeconds) {
-                Logs.i(TAG, "onProgressChange:index=" + index + ",进度：" + currentPlayTimeInSeconds + "/" + durationInSeconds);
+                Logs.i(TAG, "onProgressChange:index=" + index + ", progress=" + currentPlayTimeInSeconds + "/" + durationInSeconds);
 
                 playHistory.index = index;
                 playHistory.seconds = currentPlayTimeInSeconds;
@@ -274,14 +279,14 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             @Override
             public boolean onPlayFailed(PSSDK.ErrorInfo errorInfo) {
-                // 视频播放失败
+                // 瑙嗛鎾斁澶辫触
                 Logs.i(TAG, "onPlayFailed() called with: errorInfo = [" + errorInfo + "]");
                 if (errorInfo.code == PSSDK.ErrorInfo.ERROR_CODE_CURRENT_COUNTRY_NOT_SUPPORT) {
-                    // 当前地区不支持播放，SDK会Toast提示，开发者也可以在此时显示弹窗等更友好的提示
+                    // 褰撳墠鍦板尯涓嶆敮鎸佹挱鏀撅紝SDK浼歍oast鎻愮ず锛屽紑鍙戣€呬篃鍙互鍦ㄦ鏃舵樉绀哄脊绐楃瓑鏇村弸濂界殑鎻愮ず
                     AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(DramaPlayActivity.this);
-                    dialogBuilder.setMessage("当前地区不支持播放");
+                    dialogBuilder.setMessage("Current region is not supported for playback");
                     dialogBuilder.create().show();
-                    // return true表示替换掉SDK内的Toast提示
+                    // return true琛ㄧず鏇挎崲鎺塖DK鍐呯殑Toast鎻愮ず
                     return true;
                 }
                 return false;
@@ -289,10 +294,10 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             @Override
             public void onShortPlayPlayed(ShortPlay shortPlay, int index, EpisodeData episodeData) {
-                // 每一集开始播放时回调，可用来记录播放历史
+                // 姣忎竴闆嗗紑濮嬫挱鏀炬椂鍥炶皟锛屽彲鐢ㄦ潵璁板綍鎾斁鍘嗗彶
                 Logs.i(TAG, "onShortPlayPlayed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
 
-                if (shortPlay.isCollected) {//已收藏则更新哪一集
+                if (shortPlay.isCollected) {//宸叉敹钘忓垯鏇存柊鍝竴闆?
                     ShortUtils.followInsertOrDelete(DramaPlayActivity.this, true, shortPlay, index);
                 }
                 ShortUtils.historyInsert(DramaPlayActivity.this, shortPlay, index);
@@ -309,11 +314,11 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 currentResolution = null;
 
                 if (type == ItemType.AD) {
-                    // 列表里是广告时，底部就不同时显示banner了，影响体验，换成普通view
+                    // 鍒楄〃閲屾槸骞垮憡鏃讹紝搴曢儴灏变笉鍚屾椂鏄剧ずbanner浜嗭紝褰卞搷浣撻獙锛屾崲鎴愭櫘閫歷iew
                     View view = getBottomDefaultView();
                     detailFragment.setBottomExtraViewContent(view, ShortPlayFragment.BottomViewType.OTHER);
                 } else {
-                    // 列表里是视频，可以显示底部banner
+                    // 鍒楄〃閲屾槸瑙嗛锛屽彲浠ユ樉绀哄簳閮╞anner
                     if (bannerView != null) {
                         detailFragment.setBottomExtraViewContent(bannerView, ShortPlayFragment.BottomViewType.AD);
                     } else {
@@ -334,20 +339,20 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             @Override
             public void onEnterImmersiveMode() {
-                // 进入沉浸式模式
+                // 杩涘叆娌夋蹈寮忔ā寮?
                 Logs.i(TAG, "onEnterImmersiveMode() called");
             }
 
             @Override
             public void onExitImmersiveMode() {
-                // 退出沉浸式模式
+                // 閫€鍑烘矇娴稿紡妯″紡
                 Logs.i(TAG, "onExitImmersiveMode() called");
             }
 
             @Override
             public boolean isNeedBlock(ShortPlay shortPlay, int index) {
-                // 询问index集是否锁定，true锁定后则该集无法自动播放，需要通过showAdIfNeed里完成解锁
-                // 默认对每一集均会询问，一旦返回false则此播放页不会再询问该集
+                // 璇㈤棶index闆嗘槸鍚﹂攣瀹氾紝true閿佸畾鍚庡垯璇ラ泦鏃犳硶鑷姩鎾斁锛岄渶瑕侀€氳繃showAdIfNeed閲屽畬鎴愯В閿?
+                // 榛樿瀵规瘡涓€闆嗗潎浼氳闂紝涓€鏃﹁繑鍥瀎alse鍒欐鎾斁椤典笉浼氬啀璇㈤棶璇ラ泦
                 Logs.i(TAG, "isNeedBlock() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
                 //return unlockedIndexes.get(index, 0) != 1;
                 return false;
@@ -355,7 +360,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             @Override
             public void showAdIfNeed(ShortPlay shortPlay, int index, PSSDK.ShortPlayBlockResultListener listener) {
-                // 当isNeedBlock指定index集锁定后，在用户切换到该集时，SDK不会播放视频，同时会调用此回调，可在此时展示激励广告或购买等交互，用户达成后调用listener.onShortPlayUnlocked告知SDK可播放该集
+                // 褰搃sNeedBlock鎸囧畾index闆嗛攣瀹氬悗锛屽湪鐢ㄦ埛鍒囨崲鍒拌闆嗘椂锛孲DK涓嶄細鎾斁瑙嗛锛屽悓鏃朵細璋冪敤姝ゅ洖璋冿紝鍙湪姝ゆ椂灞曠ず婵€鍔卞箍鍛婃垨璐拱绛変氦浜掞紝鐢ㄦ埛杈炬垚鍚庤皟鐢╨istener.onShortPlayUnlocked鍛婄煡SDK鍙挱鏀捐闆?
                 Logs.i(TAG, "showAdIfNeed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "], listener = [" + listener + "]");
                 showUnLockDialog(shortPlay, index, listener);
             }
@@ -363,9 +368,9 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             @Override
             public void onVideoInfoFetched(ShortPlay shortPlay, int index, PSSDK.VideoPlayInfo videoPlayInfo) {
                 currentVideoPlayInfo = videoPlayInfo;
-                // 每一集视频准备好时调用此方法告知本集的视频信息
+                // 姣忎竴闆嗚棰戝噯澶囧ソ鏃惰皟鐢ㄦ鏂规硶鍛婄煡鏈泦鐨勮棰戜俊鎭?
                 resolutions = videoPlayInfo.supportResolutions;
-                // 当前分辨率
+                // 褰撳墠鍒嗚鲸鐜?
                 currentResolution = videoPlayInfo.currentResolution;
 
                 if (resolutionChangeListener != null) {
@@ -379,7 +384,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             public List<View> onObtainPlayerControlViews() {
                 ArrayList<View> views = new ArrayList<>();
 
-                // 分享按钮
+                // 鍒嗕韩鎸夐挳
                 CustomShareView shareView = new CustomShareView(getApplicationContext());
                 views.add(shareView);
                 shareView.setImageResource(R.drawable.share);
@@ -395,11 +400,11 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                         intent.setType("text/plain");
                         intent.putExtra(Intent.EXTRA_SUBJECT, shortPlay.title);
                         intent.putExtra(Intent.EXTRA_TEXT, shortPlay.desc);
-                        startActivity(Intent.createChooser(intent, "分享短剧"));
+                        startActivity(Intent.createChooser(intent, "鍒嗕韩鐭墽"));
                     }
                 });
 
-                // 点赞按钮
+                // 鐐硅禐鎸夐挳
                 CustomLikeView customLikeView = new CustomLikeView(getApplicationContext());
                 FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                 params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
@@ -408,7 +413,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 customLikeView.setLayoutParams(params);
                 views.add(customLikeView);
 
-                // 收藏按钮
+                // 鏀惰棌鎸夐挳
                 CustomCollectView collectView = new CustomCollectView(getApplicationContext());
                 params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                 params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
@@ -424,7 +429,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 loadingView.setLayoutParams(loadingLP);
                 views.add(loadingView);
 
-                // 自定义失败界面
+                // 鑷畾涔夊け璐ョ晫闈?
                 CustomErrorView errorView = new CustomErrorView(getApplicationContext());
                 errorView.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -434,7 +439,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 });
                 views.add(errorView);
 
-                // 自定义进度条
+                // 鑷畾涔夎繘搴︽潯
                 CustomProgressBar customProgressBar = new CustomProgressBar(getApplicationContext());
                 FrameLayout.LayoutParams lpProgressBar = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                 lpProgressBar.gravity = Gravity.BOTTOM;
@@ -455,11 +460,11 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             }
         });
         if (detailFragment == null) {
-            Toast.makeText(this, "创建播放页失败", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Create player page failed", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 将播放页展示出来
+        // 灏嗘挱鏀鹃〉灞曠ず鍑烘潵
         getSupportFragmentManager().beginTransaction().add(R.id.fragment_container, detailFragment).show(detailFragment).commit();
 
         View view = getBottomDefaultView();
@@ -583,7 +588,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                         if (listener != null) {
                             listener.onShortPlayUnlocked();
                         }
-                        // 询问连续解锁
+                        // 璇㈤棶杩炵画瑙ｉ攣
                         showUnlockMoreDialog();
                     }
                 });
@@ -648,12 +653,12 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 public void onAdDismissed() {
                     listener.onShortPlayUnlocked();
 
-                    // 用户看广告解锁上报日志
+                    // 鐢ㄦ埛鐪嬪箍鍛婅В閿佷笂鎶ユ棩蹇?
                     PSSDK.RevenueInfo revenueInfo = new PSSDK.RevenueInfo(PSSDK.RevenueInfo.RevenueType.IAA, PSSDK.RevenueInfo.CurrencyType.USD);
-                    revenueInfo.revenue(0.1f); // 展示广告带来的收益，如果是CPM相关接口，需要提供CPM/1000的计算结果，单位美元
-                    revenueInfo.adnName("xxx"); // 广告ADN名
-                    revenueInfo.adFormat(PSSDK.RevenueInfo.AdFormat.REWARD_VIDEO); // 广告样式，比如激励视频等
-                    revenueInfo.aboutUnlock(true); // 表示是和解锁有关
+                    revenueInfo.revenue(0.1f); // 灞曠ず骞垮憡甯︽潵鐨勬敹鐩婏紝濡傛灉鏄疌PM鐩稿叧鎺ュ彛锛岄渶瑕佹彁渚汣PM/1000鐨勮绠楃粨鏋滐紝鍗曚綅缇庡厓
+                    revenueInfo.adnName("xxx"); // 骞垮憡ADN鍚?
+                    revenueInfo.adFormat(PSSDK.RevenueInfo.AdFormat.REWARD_VIDEO); // 骞垮憡鏍峰紡锛屾瘮濡傛縺鍔辫棰戠瓑
+                    revenueInfo.aboutUnlock(true); // 琛ㄧず鏄拰瑙ｉ攣鏈夊叧
 
                     PSSDK.reportRevenueInfo(revenueInfo);
                 }
@@ -664,7 +669,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             loadRewardAd(new PAGRewardedAdLoadCallback() {
                 @Override
                 public void onError(@NonNull PAGErrorModel pagErrorModel) {
-                    toast("加载广告失败");
+                    toast("鍔犺浇骞垮憡澶辫触");
                 }
 
                 @Override
@@ -801,7 +806,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
     void autoUnlock(int expectUnlockCount) {
         int finalUnlockCount = 0;
-        // 往后解锁
+        // 寰€鍚庤В閿?
         for (int i = playHistory.index; i <= shortPlay.total && expectUnlockCount > 0; i++) {
             if (unlockedIndexes.get(i, 0) != 1) {
                 unlockedIndexes.put(i, 1);
@@ -810,7 +815,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 finalUnlockCount++;
             }
         }
-        // 还有多的，从前面检查解锁
+        // 杩樻湁澶氱殑锛屼粠鍓嶉潰妫€鏌ヨВ閿?
         if (expectUnlockCount > 0) {
             for (int i = 1; i < playHistory.index && expectUnlockCount > 0; i++) {
                 if (unlockedIndexes.get(i, 0) != 1) {
@@ -1139,7 +1144,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         public void onAdShowed() {
             okBtn.setCompoundDrawables(null, null, null, null);
             okBtn.setText("In the lottery");
-            // 3s后显示抽奖结果
+            // 3s鍚庢樉绀烘娊濂栫粨鏋?
             mHandler.sendEmptyMessageDelayed(MSG_SHOW_LOTTERY_RESULT, 1000);
             hasShowAd = true;
         }
@@ -1201,7 +1206,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     }
 
     /**
-     * 连续解锁弹窗
+     * 杩炵画瑙ｉ攣寮圭獥
      */
     public static class UnlockMoreDialog extends DialogFragment implements Handler.Callback {
 

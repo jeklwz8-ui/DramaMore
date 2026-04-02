@@ -45,9 +45,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void initFragment() {
         homeFragment = new HomeFragment();
-        recommendFragment = new RecommendFragment();
-        followFragment = new FollowFragment();
-        profileFragment = new MineFragment();
+        recommendFragment = null;
+        followFragment = null;
+        profileFragment = null;
 
         BottomNavigationView navView = findViewById(R.id.bottom_navigation);
         navView.setItemIconTintList(null);
@@ -61,11 +61,20 @@ public class MainActivity extends AppCompatActivity {
             if (itemId == R.id.nav_home) {
                 fragment = homeFragment != null ? homeFragment : new HomeFragment();
             } else if (itemId == R.id.nav_recommend) {
-                fragment = recommendFragment != null ? recommendFragment : new RecommendFragment();
+                if (recommendFragment == null) {
+                    recommendFragment = new RecommendFragment();
+                }
+                fragment = recommendFragment;
             } else if (itemId == R.id.nav_follow) {
-                fragment = followFragment != null ? followFragment : new FollowFragment();
+                if (followFragment == null) {
+                    followFragment = new FollowFragment();
+                }
+                fragment = followFragment;
             } else if (itemId == R.id.nav_profile) {
-                fragment = profileFragment != null ? profileFragment : new MineFragment();
+                if (profileFragment == null) {
+                    profileFragment = new MineFragment();
+                }
+                fragment = profileFragment;
             }
 
             return FragmentUtils.switchFragment(MainActivity.this,fragment);

@@ -33,8 +33,7 @@ public class LanguageActivity extends AppCompatActivity {
         languageDisplayNames.put("th", "泰语");
         languageDisplayNames.put("ja", "日语");
         languageDisplayNames.put("ko", "韩语");
-        languageDisplayNames.put("pt", "葡萄牙语");
-        languageDisplayNames.put("ar", "阿拉伯语");
+        languageDisplayNames.put("pt", "葡萄牙语");;
     }
 
     private final List<CheckBox> checkBoxes = new ArrayList<>();

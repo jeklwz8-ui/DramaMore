@@ -39,8 +39,7 @@ public class LanguageChooseDialog extends DialogFragment {
         languageDisplayNames.put("th", getString(R.string.s_th));
         languageDisplayNames.put("ja", getString(R.string.s_ja));
         languageDisplayNames.put("ko", getString(R.string.s_ko));
-        languageDisplayNames.put("pt", getString(R.string.s_pt));
-        languageDisplayNames.put("ar", getString(R.string.s_ar));
+        languageDisplayNames.put("pt", getString(R.string.s_pt));;
     }
 
     private final List<CheckBox> checkBoxes = new ArrayList<>();

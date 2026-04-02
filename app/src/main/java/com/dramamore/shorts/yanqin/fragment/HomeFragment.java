@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -36,6 +37,19 @@ public class HomeFragment extends Fragment {
     private HomeAdapter adapter;
     private boolean isInitBannerData, isInitHotData, isInitMostData, isInitCartoonData;
 
+    private boolean postToUiIfAlive(@NonNull Runnable action) {
+        FragmentActivity activity = getActivity();
+        if (!isAdded() || activity == null) {
+            return false;
+        }
+        activity.runOnUiThread(() -> {
+            if (isAdded()) {
+                action.run();
+            }
+        });
+        return true;
+    }
+
     private void initBannerData() {
         PSSDK.requestNewDrama(1, 5, new PSSDK.FeedListResultListener() {
             @Override
@@ -47,7 +61,7 @@ public class HomeFragment extends Fragment {
             public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> feedListLoadResult) {
                 Logs.i(TAG, "initNewData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString() + ",size=" + feedListLoadResult.dataList.size());
                 isInitBannerData = true;
-                getActivity().runOnUiThread(() -> {
+                postToUiIfAlive(() -> {
                     if (adapter != null) {
                         adapter.setHeaderBannerData(feedListLoadResult.dataList);
                     }
@@ -67,7 +81,7 @@ public class HomeFragment extends Fragment {
             public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> feedListLoadResult) {
                 Logs.i(TAG, "initHotData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString());
                 isInitHotData = true;
-                getActivity().runOnUiThread(() -> {
+                postToUiIfAlive(() -> {
                     if (adapter != null) {
                         adapter.setHeaderHotData(feedListLoadResult.dataList);
                     }
@@ -88,7 +102,7 @@ public class HomeFragment extends Fragment {
             public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> feedListLoadResult) {
                 Logs.i(TAG, "initMostData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString());
                 isInitMostData = true;
-                getActivity().runOnUiThread(() -> {
+                postToUiIfAlive(() -> {
                     if (adapter != null) {
                         adapter.setHeaderMostData(feedListLoadResult.dataList);
                     }
@@ -109,7 +123,7 @@ public class HomeFragment extends Fragment {
             public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> feedListLoadResult) {
                 Logs.i(TAG, "initCartoonData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString());
                 isInitCartoonData = true;
-                getActivity().runOnUiThread(() -> {
+                postToUiIfAlive(() -> {
                     if (adapter != null) {
                         adapter.setHeaderCartoonData(feedListLoadResult.dataList);
                     }
@@ -202,23 +216,23 @@ public class HomeFragment extends Fragment {
             public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> result) {
                 Logs.i(TAG, "loadMoreData-onSuccess-feedListLoadResult-hasMore=" + result.hasMore + ",size=" + result.dataList.size());
 
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        isLoading = false;
-                        if (result.dataList != null && !result.dataList.isEmpty()) {
-                            hasMore = result.hasMore;//更多
-                            if (result.hasMore) {
-                                currentPage++;
-                            }
-                            if (currentPage == 1) {
-                                adapter.setData(result.dataList);
-                            } else {
-                                adapter.addData(result.dataList);
-                            }
+                boolean posted = postToUiIfAlive(() -> {
+                    isLoading = false;
+                    if (adapter != null && result.dataList != null && !result.dataList.isEmpty()) {
+                        hasMore = result.hasMore;//更多
+                        if (result.hasMore) {
+                            currentPage++;
+                        }
+                        if (currentPage == 1) {
+                            adapter.setData(result.dataList);
+                        } else {
+                            adapter.addData(result.dataList);
                         }
                     }
                 });
+                if (!posted) {
+                    isLoading = false;
+                }
             }
 
             @Override

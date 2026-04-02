@@ -87,6 +87,8 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private static final String EXTRA_SHORT_PLAY_FROM_SECONDS = "seconds";
     private static final int REQUEST_CODE_CHOOSE_RESOLUTION = 1;
     private static final int REQUEST_CODE_CHOOSE_INDEX = 2;
+    private static final float[] PLAY_SPEEDS = new float[]{1.0f, 1.25f, 1.5f, 2.0f};
+    private static final String[] PLAY_SPEED_LABELS = new String[]{"1.0x", "1.25x", "1.5x", "2.0x"};
     private final List<PAGNativeAd> feedAds = new ArrayList<>();
     /**
      * 已解锁的剧集
@@ -106,6 +108,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private boolean hasShowRetainDialog;
     private boolean hasShowUnlockMoreDialog;
     private Runnable taskWhenResume;
+    private int currentPlaySpeedIndex = 0;
 
     public static void start(Context context, ShortPlay shortPlay) {
         start(context, shortPlay, 1, 0);
@@ -368,6 +371,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 if (resolutionChangeListener != null) {
                     resolutionChangeListener.onResolutionChanged(currentResolution.toString());
                 }
+                applyCurrentPlaySpeed();
                 Logs.i(TAG, "onVideoInfoFetched: currentResolution=" + currentResolution);
             }
 
@@ -724,6 +728,25 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             return;
         }
         ChooseResolutionDialogActivity.start(this, REQUEST_CODE_CHOOSE_RESOLUTION, resolutions, currentResolution);
+    }
+
+    private float getCurrentPlaySpeed() {
+        return PLAY_SPEEDS[currentPlaySpeedIndex];
+    }
+
+    private String getCurrentPlaySpeedLabel() {
+        return PLAY_SPEED_LABELS[currentPlaySpeedIndex];
+    }
+
+    private void cyclePlaySpeed() {
+        currentPlaySpeedIndex = (currentPlaySpeedIndex + 1) % PLAY_SPEEDS.length;
+        applyCurrentPlaySpeed();
+    }
+
+    private void applyCurrentPlaySpeed() {
+        if (detailFragment != null) {
+            detailFragment.setVideoSpeed(getCurrentPlaySpeed());
+        }
     }
 
     @Override
@@ -1380,6 +1403,8 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         private final TextView chooseIndexTitleTV;
         private final TextView dramaTitleTV;
         private final TextView dramaDescTV;
+        private final TextView speedTV;
+        private final TextView resolutionTV;
         private final SeekBar progressBar;
 //        private final TextView tvResolution;
 //        private final ImageView ivHd;
@@ -1399,6 +1424,23 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             dramaTitleTV = findViewById(R.id.tv_overlay_drama_name);
             dramaDescTV = findViewById(R.id.tv_overlay_drama_desc);
+            speedTV = findViewById(R.id.tv_speed);
+            speedTV.setText(getCurrentPlaySpeedLabel());
+            speedTV.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    cyclePlaySpeed();
+                    speedTV.setText(getCurrentPlaySpeedLabel());
+                }
+            });
+
+            resolutionTV = findViewById(R.id.tv_resolution);
+            resolutionTV.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showChooseResolutionDialog();
+                }
+            });
 
             /*ivHd = findViewById(R.id.iv_hd);
             tvResolution = findViewById(R.id.tv_resolution);
@@ -1408,12 +1450,6 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                     showChooseResolutionDialog();
                 }
             });*/
-            findViewById(R.id.iv_more).setOnClickListener(new OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    showChooseResolutionDialog();
-                }
-            });
 
             progressBar = findViewById(R.id.sb_overlay);
             progressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -1447,6 +1483,10 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             chooseIndexTitleTV.setText(shortPlay.total + getString(R.string.s_eps) + " - " + shortPlay.title);
             dramaTitleTV.setText(shortPlay.title);
             dramaDescTV.setText(shortPlay.desc);
+            speedTV.setText(getCurrentPlaySpeedLabel());
+            if (currentResolution != null) {
+                resolutionTV.setText(currentResolution.toString());
+            }
         }
 
         @Override
@@ -1462,6 +1502,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         public void onResolutionChanged(String resoluton) {
             Logs.i(TAG, "onResolutionChanged-resoluton=" + resoluton);
             String resolutionString = currentResolution.toString();
+            resolutionTV.setText(resolutionString);
 //            tvResolution.setText(resolutionString);
 //            ivHd.setVisibility(resolutionString.contains("1080") ? View.VISIBLE : View.GONE);
         }

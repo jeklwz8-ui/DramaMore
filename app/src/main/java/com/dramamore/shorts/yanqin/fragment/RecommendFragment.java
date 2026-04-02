@@ -135,12 +135,16 @@ public class RecommendFragment extends Fragment {
 
     private static class CustomOverlayView extends FrameLayout implements PSSDK.IControlView, DramaPlayActivity.ProgressChangeListener {
 
+        private static final float[] PLAY_SPEEDS = new float[]{1.0f, 1.25f, 1.5f, 2.0f};
+        private static final String[] PLAY_SPEED_LABELS = new String[]{"1.0x", "1.25x", "1.5x", "2.0x"};
         private final TextView chooseIndexTitleTV;
         private final TextView dramaTitleTV;
         private final TextView dramaDescTV;
+        private final TextView speedTV;
         private final SeekBar progressBar;
         private ShortPlayFragment shortPlayFragment;
         private ShortPlay shortPlay;
+        private int currentPlaySpeedIndex = 0;
 
         public CustomOverlayView(Context context) {
             super(context);
@@ -157,6 +161,18 @@ public class RecommendFragment extends Fragment {
 
             dramaTitleTV = findViewById(R.id.tv_overlay_drama_name);
             dramaDescTV = findViewById(R.id.tv_overlay_drama_desc);
+            speedTV = findViewById(R.id.tv_speed);
+            speedTV.setText(getCurrentPlaySpeedLabel());
+            speedTV.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    cyclePlaySpeed();
+                    if (shortPlayFragment != null) {
+                        shortPlayFragment.setVideoSpeed(getCurrentPlaySpeed());
+                    }
+                    speedTV.setText(getCurrentPlaySpeedLabel());
+                }
+            });
 
             progressBar = findViewById(R.id.sb_overlay);
             progressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -192,6 +208,8 @@ public class RecommendFragment extends Fragment {
             chooseIndexTitleTV.setText(shortPlay.total + shortPlayFragment.getContext().getString(R.string.s_eps) +" - " + shortPlay.title);
             dramaTitleTV.setText(shortPlay.title);
             dramaDescTV.setText(shortPlay.desc);
+            speedTV.setText(getCurrentPlaySpeedLabel());
+            shortPlayFragment.setVideoSpeed(getCurrentPlaySpeed());
         }
 
         @Override
@@ -200,6 +218,18 @@ public class RecommendFragment extends Fragment {
                 progressBar.setMax(max);
             }
             progressBar.setProgress(progress);
+        }
+
+        private void cyclePlaySpeed() {
+            currentPlaySpeedIndex = (currentPlaySpeedIndex + 1) % PLAY_SPEEDS.length;
+        }
+
+        private float getCurrentPlaySpeed() {
+            return PLAY_SPEEDS[currentPlaySpeedIndex];
+        }
+
+        private String getCurrentPlaySpeedLabel() {
+            return PLAY_SPEED_LABELS[currentPlaySpeedIndex];
         }
     }
 

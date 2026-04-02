@@ -260,6 +260,7 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         TextView tvHotMore;
         TextView tvMostMore;
         TextView tvCartoonMore;
+        TextView tvBannerTitle;
         FrameLayout flSearch;
         BannerManager bannerManager;
 
@@ -267,8 +268,9 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             super(itemView);
             bannerPager = itemView.findViewById(R.id.bannerPager);
             indicatorLayout = itemView.findViewById(R.id.indicatorLayout);
+            tvBannerTitle = itemView.findViewById(R.id.tv_banner_title);
             List<ShortPlay> bannerDatas = new ArrayList<>();
-            bannerManager = new BannerManager(bannerPager, indicatorLayout, bannerDatas);
+            bannerManager = new BannerManager(bannerPager, indicatorLayout, tvBannerTitle, bannerDatas);
 
             flSearch = itemView.findViewById(R.id.fl_search);
             llHot = itemView.findViewById(R.id.ll_hot);

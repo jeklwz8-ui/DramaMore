@@ -5,6 +5,7 @@ import android.os.Looper;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.viewpager2.widget.ViewPager2;
@@ -23,6 +24,7 @@ public class BannerManager {
     private static final String TAG = "BannerManager";
     private ViewPager2 viewPager;
     private LinearLayout indicatorLayout;
+    private TextView titleView;
     private Handler handler = new Handler(Looper.getMainLooper());
 
     private Runnable runnable;
@@ -30,8 +32,13 @@ public class BannerManager {
     BannerAdapter adapter;
     private boolean isAttached = false; // 记录状态
     public BannerManager(ViewPager2 pager, LinearLayout indicator, List<ShortPlay> list) {
+        this(pager, indicator, null, list);
+    }
+
+    public BannerManager(ViewPager2 pager, LinearLayout indicator, TextView title, List<ShortPlay> list) {
         viewPager = pager;
         indicatorLayout = indicator;
+        titleView = title;
         images.clear();
         images.addAll(list);
 
@@ -55,6 +62,7 @@ public class BannerManager {
                 if (!images.isEmpty()) {
                     int real = position % images.size();
                     updateIndicators(real);
+                    updateTitle(real);
                 }
             }
 
@@ -96,6 +104,7 @@ public class BannerManager {
                 indicatorLayout.removeAllViews();
                 createIndicators();
             }
+            updateTitle(0);
         }
     }
 
@@ -124,6 +133,7 @@ public class BannerManager {
         }
 
         updateIndicators(0);
+        updateTitle(0);
     }
 
     private void updateIndicators(int position) {
@@ -136,6 +146,18 @@ public class BannerManager {
                 dot.setImageResource(R.drawable.indicator_inactive);
             }
         }
+    }
+
+    private void updateTitle(int position) {
+        if (titleView == null) {
+            return;
+        }
+        if (images.isEmpty() || position < 0 || position >= images.size()) {
+            titleView.setText("");
+            return;
+        }
+        ShortPlay shortPlay = images.get(position);
+        titleView.setText(shortPlay != null ? shortPlay.title : "");
     }
 
     private void startAutoScroll() {

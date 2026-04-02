@@ -24,7 +24,7 @@ public class GridSpacingItemDecoration extends RecyclerView.ItemDecoration {
         if (position == RecyclerView.NO_POSITION) return;
 
         RecyclerView.Adapter adapter = parent.getAdapter();
-        if (adapter != null && adapter.getItemViewType(position) == 0) { // TYPE_HEADER
+        if (adapter != null && adapter.getItemViewType(position) == HomeAdapter.TYPE_HEADER) { // TYPE_HEADER
             outRect.set(0, 0, 0, 0);
             return;
         }

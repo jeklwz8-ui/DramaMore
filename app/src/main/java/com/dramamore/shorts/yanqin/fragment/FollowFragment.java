@@ -11,56 +11,69 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bytedance.sdk.shortplay.api.PSSDK;
+import com.bytedance.sdk.shortplay.api.ShortPlay;
 import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.adapter.FollowListAdapter;
 import com.dramamore.shorts.yanqin.adapter.LinearSpacingItemDecoration;
-import com.dramamore.shorts.yanqin.dao.FollowDao;
-import com.dramamore.shorts.yanqin.database.FollowDatabase;
-import com.dramamore.shorts.yanqin.entity.FollowDaoEntity;
+import com.dramamore.shorts.yanqin.dao.HistoryDao;
+import com.dramamore.shorts.yanqin.database.HistoryDatabase;
+import com.dramamore.shorts.yanqin.entity.HistoryDaoEntity;
 import com.dramamore.shorts.yanqin.utils.Logs;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class FollowFragment extends Fragment {
     private static final String TAG = "FollowFragment";
+    private static final int PAGE_SIZE = 20;
+    private static final int MIN_FIRST_SCREEN_ITEMS = 6;
+
     private int currentPage = 1;
-    private boolean isLoading = false, hasMore = false;
-    private final int PAGE_SIZE = 20; // 每页数量
+    private boolean isLoading = false;
+    private boolean hasMore = true;
+
     private FollowListAdapter adapter;
-    private FollowDao followDao;
+    private HistoryDao historyDao;
+    private View loadingLayout;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        // 建议创建对应的 layout 文件：fragment_home.xml
         View view = inflater.inflate(R.layout.fragment_follow, container, false);
+        loadingLayout = view.findViewById(R.id.ll_follow_loading);
         initRecyclerView(view);
-        FollowDatabase db = FollowDatabase.getDatabase(getActivity());
-        followDao = db.followDao();
+        HistoryDatabase historyDb = HistoryDatabase.getDatabase(requireContext());
+        historyDao = historyDb.historyDao();
         return view;
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        Logs.i(TAG, "onResume---");
-        if (!isLoading) {
-            currentPage = 1;
-            loadMoreData();
-        }
+        refreshData();
     }
 
     @Override
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
-        Logs.i(TAG, "onHiddenChanged---hidden=" + hidden);
         if (!hidden) {
-            // Fragment 从隐藏状态变为显示状态
-            if (!isLoading) {
-                currentPage = 1;
-                loadMoreData();
-            }
+            refreshData();
         }
+    }
+
+    private void refreshData() {
+        if (isLoading) {
+            return;
+        }
+        currentPage = 1;
+        hasMore = true;
+        if (adapter != null) {
+            adapter.setData(Collections.emptyList());
+        }
+        setLoadingVisible(true);
+        loadMoreData(true, true);
     }
 
     private void initRecyclerView(View view) {
@@ -68,65 +81,112 @@ public class FollowFragment extends Fragment {
         recyclerView.addItemDecoration(new LinearSpacingItemDecoration(10, getContext()));
 
         adapter = new FollowListAdapter();
-
-        // 1. 设置三列网格
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setAdapter(adapter);
 
-        // 2. 上拉加载监听
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                if (dy > 0) { // 向下滑动
-                    int visibleItemCount = layoutManager.getChildCount();
-                    int totalItemCount = layoutManager.getItemCount();
-                    int pastVisibleItems = layoutManager.findFirstVisibleItemPosition();
-
-                    if (!isLoading) {
-                        if ((visibleItemCount + pastVisibleItems) >= totalItemCount) {
-                            Logs.i(TAG, "onScrolled-加载更多！");
-                            loadMoreData();
-                        }
-                    }
+                if (dy <= 0 || isLoading || !hasMore) {
+                    return;
+                }
+                int visibleItemCount = layoutManager.getChildCount();
+                int totalItemCount = layoutManager.getItemCount();
+                int pastVisibleItems = layoutManager.findFirstVisibleItemPosition();
+                if ((visibleItemCount + pastVisibleItems) >= totalItemCount) {
+                    loadMoreData(true, false);
                 }
             }
         });
     }
 
-    private void loadMoreData() {
+    private void loadMoreData(boolean skipEmptyPages, boolean showPageLoading) {
+        if (isLoading || !hasMore) {
+            return;
+        }
         isLoading = true;
-        // 在子线程中执行数据库操作
-        FollowDatabase.executor.execute(new Runnable() {
+        final int requestPage = currentPage;
+        final boolean keepPageLoading = showPageLoading;
+        PSSDK.requestFeedList(requestPage, PAGE_SIZE, new PSSDK.FeedListResultListener() {
             @Override
-            public void run() {
-                // 1. 获取当前页数据
-                int offset = (currentPage - 1) * PAGE_SIZE;
-                List<FollowDaoEntity> newData = followDao.getPagedFollows(PAGE_SIZE, (currentPage - 1) * offset);
-                // 2. 判断是否还有更多
-                hasMore = newData.size() == PAGE_SIZE;
-                if (!newData.isEmpty()) {
-                    // 3. 更新偏移量，为下一页做准备
-                    // 4. 将数据回调给 UI 层 (比如通过 LiveData 或 Handler)
-                    updateUI(newData);
+            public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> result) {
+                final boolean resultHasMore = result != null && result.hasMore;
+                final List<ShortPlay> source = result == null || result.dataList == null ? Collections.emptyList() : result.dataList;
+                HistoryDatabase.executor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        List<FollowListAdapter.FollowItem> collectedItems = buildCollectedItems(source);
+                        if (!isAdded() || getActivity() == null) {
+                            isLoading = false;
+                            return;
+                        }
+                        getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                isLoading = false;
+                                hasMore = resultHasMore;
+                                if (resultHasMore) {
+                                    currentPage = requestPage + 1;
+                                }
+
+                                if (requestPage == 1) {
+                                    adapter.setData(collectedItems);
+                                } else if (!collectedItems.isEmpty()) {
+                                    adapter.addData(collectedItems);
+                                }
+
+                                boolean needContinueEmptyPage = skipEmptyPages && collectedItems.isEmpty() && hasMore;
+                                boolean needContinueFillFirstScreen = keepPageLoading
+                                        && adapter.getItemCount() < MIN_FIRST_SCREEN_ITEMS
+                                        && hasMore;
+                                if (needContinueEmptyPage || needContinueFillFirstScreen) {
+                                    loadMoreData(true, keepPageLoading);
+                                    return;
+                                }
+                                if (keepPageLoading) {
+                                    setLoadingVisible(false);
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+
+            @Override
+            public void onFail(PSSDK.ErrorInfo errorInfo) {
+                Logs.i(TAG, "loadMoreData-onFail-errorInfo=" + errorInfo);
+                isLoading = false;
+                if (keepPageLoading) {
+                    setLoadingVisible(false);
                 }
             }
         });
     }
 
-    private void updateUI(List<FollowDaoEntity> newData) {
-        Logs.i(TAG, "updateUI-newData.size=" + newData.size());
-        getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                isLoading=false;
-                if (currentPage == 1) {
-                    adapter.setData(newData);
-                } else {
-                    adapter.addData(newData);
+    @NonNull
+    private List<FollowListAdapter.FollowItem> buildCollectedItems(@NonNull List<ShortPlay> source) {
+        List<FollowListAdapter.FollowItem> result = new ArrayList<>();
+        for (ShortPlay shortPlay : source) {
+            if (shortPlay == null || !shortPlay.isCollected) {
+                continue;
+            }
+            int playIndex = 1;
+            if (historyDao != null) {
+                HistoryDaoEntity history = historyDao.getEntityByShortId(shortPlay.id);
+                if (history != null && history.play_index > 0) {
+                    playIndex = history.play_index;
                 }
             }
-        });
+            result.add(new FollowListAdapter.FollowItem(shortPlay, playIndex));
+        }
+        return result;
+    }
+
+    private void setLoadingVisible(boolean visible) {
+        if (loadingLayout == null) {
+            return;
+        }
+        loadingLayout.setVisibility(visible ? View.VISIBLE : View.GONE);
     }
 }
-

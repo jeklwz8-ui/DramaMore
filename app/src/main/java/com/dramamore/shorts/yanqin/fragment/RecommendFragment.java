@@ -2,20 +2,21 @@ package com.dramamore.shorts.yanqin.fragment;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.PopupMenu;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.DefaultLifecycleObserver;
@@ -31,10 +32,12 @@ import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.activity.DramaPlayActivity;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
+import com.ss.ttvideoengine.Resolution;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class RecommendFragment extends Fragment {
@@ -66,23 +69,23 @@ public class RecommendFragment extends Fragment {
             public void onPageSelected(int position) {
                 int nextPos = position + 1;
                 ShortPlayFragment playFragment = feedListAdapter.getFragmentByPosition(nextPos);
-                Log.d(TAG, "预加载下一部剧：pos=" + nextPos + ", " + playFragment);
+                Log.d(TAG, "棰勫姞杞戒笅涓€閮ㄥ墽锛歱os=" + nextPos + ", " + playFragment);
                 if (playFragment != null) {
                     playFragment.preLoadVideo(new PSSDK.ActionResultListener() {
                         @Override
                         public void onSuccess() {
-                            Log.d(TAG, "onSuccess: 预加载成功");
+                            Log.d(TAG, "onSuccess: preload success");
                         }
 
                         @Override
                         public void onFail(PSSDK.ErrorInfo errorInfo) {
-                            Log.d(TAG, "onSuccess: 预加载失败");
+                            Log.d(TAG, "onSuccess: preload failed");
                         }
                     });
                 }
 
                 if (position == feedListAdapter.getItemCount() - 1 && hasMore) {
-                    Logs.i(TAG, "loadMoreData-加载更多-pos=" + position + ",hasMore=" + hasMore);
+                    Logs.i(TAG, "loadMoreData-鍔犺浇鏇村-pos=" + position + ",hasMore=" + hasMore);
                     loadMoreData();
                 }
             }
@@ -94,6 +97,43 @@ public class RecommendFragment extends Fragment {
         super.onResume();
         if (!isLoading && currentPage == 1) {
             loadMoreData();
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        stopRecommendPlayback();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        stopRecommendPlayback();
+    }
+
+    @Override
+    public void onHiddenChanged(boolean hidden) {
+        super.onHiddenChanged(hidden);
+        if (hidden) {
+            stopRecommendPlayback();
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        stopRecommendPlayback();
+        if (feedListAdapter != null) {
+            feedListAdapter.destroy();
+            feedListAdapter = null;
+        }
+        super.onDestroyView();
+    }
+
+    private void stopRecommendPlayback() {
+        if (feedListAdapter != null) {
+            feedListAdapter.pauseAllPlayback();
+            feedListAdapter.stopAllPlayback();
         }
     }
 
@@ -118,7 +158,7 @@ public class RecommendFragment extends Fragment {
                             feedListAdapter.appendData(result.dataList);
                         }
 
-                        hasMore = result.hasMore;//更多
+                        hasMore = result.hasMore;//鏇村
                         if (result.hasMore) {
                             currentPage++;
                         }
@@ -131,30 +171,51 @@ public class RecommendFragment extends Fragment {
         public void onFail(PSSDK.ErrorInfo errorInfo) {
             Logs.i(TAG, "loadMoreData-onFail-errorInfo=" + errorInfo);
             isLoading = false;
-            // 处理错误提示
+            // 澶勭悊閿欒鎻愮ず
         }
     };
 
-    private static class CustomOverlayView extends FrameLayout implements PSSDK.IControlView, DramaPlayActivity.ProgressChangeListener {
+    private interface ResolutionChangeListener {
+        void onResolutionChanged(String resolution);
+    }
+
+    private static class CustomOverlayView extends FrameLayout implements PSSDK.IControlView, DramaPlayActivity.ProgressChangeListener, ResolutionChangeListener {
 
         private static final float MAX_VIDEO_SPEED = 3.0f;
-        private static final float[] PLAY_SPEEDS = new float[]{0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 3.0f};
-        private static final String[] PLAY_SPEED_LABELS = new String[]{"0.75x", "1.0x", "1.25x", "1.5x", "2.0x", "3.0x"};
+        private static final float[] PLAY_SPEEDS = new float[]{1.0f, 1.5f, 2.0f};
+        private static final String[] PLAY_SPEED_LABELS = new String[]{"1.0X", "1.5X", "2.0X"};
+        private static final String DEFAULT_RESOLUTION_TEXT = "360P";
+        private static final int MENU_TYPE_NONE = 0;
+        private static final int MENU_TYPE_SPEED = 1;
+        private static final int MENU_TYPE_RESOLUTION = 2;
+
         private final TextView chooseIndexTitleTV;
         private final TextView dramaTitleTV;
         private final TextView dramaDescTV;
         private final TextView speedTV;
+        private final TextView resolutionTV;
+        private final View speedResolutionMenuLayout;
+        private final LinearLayout speedMenuPanel;
+        private final LinearLayout resolutionMenuPanel;
         private final SeekBar progressBar;
+
+        private final int speedResolutionNormalTextColor = Color.parseColor("#CCFFFFFF");
+        private final int speedResolutionActiveTextColor = Color.parseColor("#FFF84E40");
+
         private ShortPlayFragment shortPlayFragment;
         private ShortPlay shortPlay;
         private int currentPlaySpeedIndex = 0;
+        private Resolution[] resolutions;
+        private Resolution currentResolution;
+        private int currentExpandedMenuType = MENU_TYPE_NONE;
+        private int speedButtonDefaultTextColor;
+        private int resolutionButtonDefaultTextColor;
 
         public CustomOverlayView(Context context) {
             super(context);
             inflate(context, R.layout.player_overlay_for_stream, this);
 
             chooseIndexTitleTV = findViewById(R.id.tv_overlay_choose_index_title);
-
             findViewById(R.id.ll_choose_index).setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -164,26 +225,46 @@ public class RecommendFragment extends Fragment {
 
             dramaTitleTV = findViewById(R.id.tv_overlay_drama_name);
             dramaDescTV = findViewById(R.id.tv_overlay_drama_desc);
+
             speedTV = findViewById(R.id.tv_speed);
+            speedButtonDefaultTextColor = speedTV.getCurrentTextColor();
             speedTV.setText(getCurrentPlaySpeedLabel());
             speedTV.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    showChoosePlaySpeedPopup(v);
+                    toggleSpeedResolutionMenu(MENU_TYPE_SPEED, speedTV);
+                }
+            });
+
+            resolutionTV = findViewById(R.id.tv_resolution);
+            resolutionButtonDefaultTextColor = resolutionTV.getCurrentTextColor();
+            resolutionTV.setText(getResolutionButtonText(currentResolution));
+            resolutionTV.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    toggleSpeedResolutionMenu(MENU_TYPE_RESOLUTION, resolutionTV);
+                }
+            });
+
+            speedResolutionMenuLayout = findViewById(R.id.ll_speed_resolution_menu);
+            speedMenuPanel = findViewById(R.id.ll_speed_menu_panel);
+            resolutionMenuPanel = findViewById(R.id.ll_resolution_menu_panel);
+            applyTopButtonOffset();
+            speedResolutionMenuLayout.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    setExpandedMenuType(MENU_TYPE_NONE);
                 }
             });
 
             progressBar = findViewById(R.id.sb_overlay);
             progressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-
                 @Override
                 public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-
                 }
 
                 @Override
                 public void onStartTrackingTouch(SeekBar seekBar) {
-
                 }
 
                 @Override
@@ -193,6 +274,26 @@ public class RecommendFragment extends Fragment {
                     }
                 }
             });
+
+            refreshSpeedMenuItems();
+            refreshResolutionMenuItems();
+        }
+
+        private void applyTopButtonOffset() {
+            int buttonTopMargin = DpUtils.dp2px(getContext(), 32);
+            int menuTopMargin = DpUtils.dp2px(getContext(), 66);
+
+            FrameLayout.LayoutParams speedParams = (FrameLayout.LayoutParams) speedTV.getLayoutParams();
+            speedParams.topMargin = buttonTopMargin;
+            speedTV.setLayoutParams(speedParams);
+
+            FrameLayout.LayoutParams resolutionParams = (FrameLayout.LayoutParams) resolutionTV.getLayoutParams();
+            resolutionParams.topMargin = buttonTopMargin;
+            resolutionTV.setLayoutParams(resolutionParams);
+
+            FrameLayout.LayoutParams menuParams = (FrameLayout.LayoutParams) speedResolutionMenuLayout.getLayoutParams();
+            menuParams.topMargin = menuTopMargin;
+            speedResolutionMenuLayout.setLayoutParams(menuParams);
         }
 
         @Override
@@ -204,10 +305,14 @@ public class RecommendFragment extends Fragment {
         public void bindItemData(ShortPlayFragment shortPlayFragment, ShortPlay shortPlay, int index) {
             this.shortPlayFragment = shortPlayFragment;
             this.shortPlay = shortPlay;
-            chooseIndexTitleTV.setText(shortPlay.total + shortPlayFragment.getContext().getString(R.string.s_eps) +" - " + shortPlay.title);
+            chooseIndexTitleTV.setText(shortPlay.total + shortPlayFragment.getContext().getString(R.string.s_eps) + " - " + shortPlay.title);
             dramaTitleTV.setText(shortPlay.title);
             dramaDescTV.setText(shortPlay.desc);
             speedTV.setText(getCurrentPlaySpeedLabel());
+            resolutionTV.setText(getResolutionButtonText(currentResolution));
+            refreshResolutionMenuItems();
+            refreshSpeedMenuItems();
+            setExpandedMenuType(MENU_TYPE_NONE);
             applyCurrentPlaySpeed();
         }
 
@@ -219,38 +324,30 @@ public class RecommendFragment extends Fragment {
             progressBar.setProgress(progress);
         }
 
+        @Override
+        public void onResolutionChanged(String resolution) {
+            resolutionTV.setText(getResolutionButtonText(currentResolution));
+            refreshResolutionMenuItems();
+        }
+
+        void setResolutionData(@Nullable Resolution[] resolutions, @Nullable Resolution currentResolution) {
+            this.resolutions = resolutions;
+            this.currentResolution = resolveEffectiveResolution(currentResolution);
+            onResolutionChanged(getResolutionLabel(this.currentResolution));
+        }
+
         private float getCurrentPlaySpeed() {
+            if (currentPlaySpeedIndex < 0 || currentPlaySpeedIndex >= PLAY_SPEEDS.length) {
+                currentPlaySpeedIndex = 0;
+            }
             return PLAY_SPEEDS[currentPlaySpeedIndex];
         }
 
         private String getCurrentPlaySpeedLabel() {
+            if (currentPlaySpeedIndex < 0 || currentPlaySpeedIndex >= PLAY_SPEEDS.length) {
+                currentPlaySpeedIndex = 0;
+            }
             return PLAY_SPEED_LABELS[currentPlaySpeedIndex];
-        }
-
-        private void showChoosePlaySpeedPopup(@NonNull View anchor) {
-            PopupMenu popupMenu = new PopupMenu(anchor.getContext(), anchor);
-            for (int i = 0; i < PLAY_SPEED_LABELS.length; i++) {
-                popupMenu.getMenu().add(0, i, i, PLAY_SPEED_LABELS[i]);
-            }
-            popupMenu.getMenu().setGroupCheckable(0, true, true);
-            MenuItem currentItem = popupMenu.getMenu().findItem(currentPlaySpeedIndex);
-            if (currentItem != null) {
-                currentItem.setChecked(true);
-            }
-            popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                @Override
-                public boolean onMenuItemClick(MenuItem item) {
-                    int selectedSpeedIndex = item.getItemId();
-                    if (selectedSpeedIndex < 0 || selectedSpeedIndex >= PLAY_SPEEDS.length) {
-                        return false;
-                    }
-                    currentPlaySpeedIndex = selectedSpeedIndex;
-                    applyCurrentPlaySpeed();
-                    speedTV.setText(getCurrentPlaySpeedLabel());
-                    return true;
-                }
-            });
-            popupMenu.show();
         }
 
         private void applyCurrentPlaySpeed() {
@@ -264,6 +361,170 @@ public class RecommendFragment extends Fragment {
             if (shortPlayFragment != null) {
                 shortPlayFragment.setVideoSpeed(speed);
             }
+        }
+
+        private String getResolutionLabel(@Nullable Resolution resolution) {
+            if (resolution == null) {
+                return "";
+            }
+            return resolution.toString().toUpperCase(Locale.US);
+        }
+
+        @Nullable
+        private Resolution resolveEffectiveResolution(@Nullable Resolution preferredResolution) {
+            if (preferredResolution != null) {
+                return preferredResolution;
+            }
+            if (resolutions != null) {
+                for (Resolution resolution : resolutions) {
+                    if (resolution != null) {
+                        return resolution;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private String getResolutionButtonText(@Nullable Resolution resolution) {
+            String resolutionLabel = getResolutionLabel(resolveEffectiveResolution(resolution));
+            if (TextUtils.isEmpty(resolutionLabel)) {
+                return DEFAULT_RESOLUTION_TEXT;
+            }
+            if (resolutionLabel.startsWith("HD ")) {
+                return resolutionLabel;
+            }
+            if (resolutionLabel.contains("1080") || resolutionLabel.contains("720")) {
+                return "HD " + resolutionLabel;
+            }
+            return resolutionLabel;
+        }
+
+        private void toggleSpeedResolutionMenu(int menuType, @NonNull View anchorView) {
+            if (currentExpandedMenuType == menuType) {
+                setExpandedMenuType(MENU_TYPE_NONE);
+                return;
+            }
+            if (menuType == MENU_TYPE_SPEED) {
+                refreshSpeedMenuItems();
+            } else if (menuType == MENU_TYPE_RESOLUTION) {
+                refreshResolutionMenuItems();
+            }
+            setExpandedMenuType(menuType);
+            speedResolutionMenuLayout.post(new Runnable() {
+                @Override
+                public void run() {
+                    updateMenuPosition(anchorView);
+                }
+            });
+        }
+
+        private void updateMenuPosition(@NonNull View anchorView) {
+            View parentView = (View) speedResolutionMenuLayout.getParent();
+            if (parentView == null) {
+                return;
+            }
+            FrameLayout.LayoutParams menuLayoutParams = (FrameLayout.LayoutParams) speedResolutionMenuLayout.getLayoutParams();
+            menuLayoutParams.gravity = Gravity.TOP | Gravity.RIGHT;
+            int menuWidth = speedResolutionMenuLayout.getWidth();
+            if (menuWidth <= 0) {
+                menuWidth = speedResolutionMenuLayout.getMeasuredWidth();
+            }
+            if (menuWidth <= 0) {
+                menuWidth = DpUtils.dp2px(getContext(), currentExpandedMenuType == MENU_TYPE_SPEED ? 56 : 70);
+            }
+            int anchorCenterX = anchorView.getLeft() + anchorView.getWidth() / 2;
+            int desiredMenuLeft = anchorCenterX - menuWidth / 2;
+            int maxLeft = Math.max(0, parentView.getWidth() - menuWidth);
+            int clampedLeft = Math.max(0, Math.min(desiredMenuLeft, maxLeft));
+            menuLayoutParams.topMargin = anchorView.getBottom() + DpUtils.dp2px(getContext(), 6);
+            menuLayoutParams.rightMargin = Math.max(0, parentView.getWidth() - (clampedLeft + menuWidth));
+            speedResolutionMenuLayout.setLayoutParams(menuLayoutParams);
+        }
+
+        private void setExpandedMenuType(int menuType) {
+            currentExpandedMenuType = menuType;
+            speedResolutionMenuLayout.setVisibility(menuType == MENU_TYPE_NONE ? View.GONE : View.VISIBLE);
+            speedMenuPanel.setVisibility(menuType == MENU_TYPE_SPEED ? View.VISIBLE : View.GONE);
+            resolutionMenuPanel.setVisibility(menuType == MENU_TYPE_RESOLUTION ? View.VISIBLE : View.GONE);
+            speedTV.setSelected(menuType == MENU_TYPE_SPEED);
+            resolutionTV.setSelected(menuType == MENU_TYPE_RESOLUTION);
+            speedTV.setTextColor(menuType == MENU_TYPE_SPEED ? speedResolutionActiveTextColor : speedButtonDefaultTextColor);
+            resolutionTV.setTextColor(menuType == MENU_TYPE_RESOLUTION ? speedResolutionActiveTextColor : resolutionButtonDefaultTextColor);
+        }
+
+        private void refreshSpeedMenuItems() {
+            speedMenuPanel.removeAllViews();
+            for (int i = 0; i < PLAY_SPEED_LABELS.length; i++) {
+                final int speedIndex = i;
+                TextView itemView = createMenuItemView(PLAY_SPEED_LABELS[i], i == currentPlaySpeedIndex);
+                itemView.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        currentPlaySpeedIndex = speedIndex;
+                        applyCurrentPlaySpeed();
+                        speedTV.setText(getCurrentPlaySpeedLabel());
+                        refreshSpeedMenuItems();
+                        setExpandedMenuType(MENU_TYPE_NONE);
+                    }
+                });
+                speedMenuPanel.addView(itemView);
+            }
+        }
+
+        private void refreshResolutionMenuItems() {
+            resolutionMenuPanel.removeAllViews();
+            List<Resolution> availableResolutions = new ArrayList<>();
+            if (resolutions != null) {
+                for (Resolution resolution : resolutions) {
+                    if (resolution != null) {
+                        availableResolutions.add(resolution);
+                    }
+                }
+            }
+            if (availableResolutions.isEmpty() && currentResolution != null) {
+                availableResolutions.add(currentResolution);
+            }
+            if (availableResolutions.isEmpty()) {
+                TextView emptyView = createMenuItemView("AUTO", false);
+                emptyView.setClickable(false);
+                emptyView.setTextColor(speedResolutionNormalTextColor);
+                resolutionMenuPanel.addView(emptyView);
+                return;
+            }
+            for (Resolution resolution : availableResolutions) {
+                final Resolution selectedResolution = resolution;
+                String resolutionLabel = getResolutionLabel(resolution);
+                boolean isSelected = resolutionLabel.equals(getResolutionLabel(currentResolution));
+                TextView itemView = createMenuItemView(resolutionLabel, isSelected);
+                itemView.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        currentResolution = selectedResolution;
+                        if (shortPlayFragment != null) {
+                            shortPlayFragment.setResolution(selectedResolution);
+                        }
+                        resolutionTV.setText(getResolutionButtonText(selectedResolution));
+                        refreshResolutionMenuItems();
+                        setExpandedMenuType(MENU_TYPE_NONE);
+                    }
+                });
+                resolutionMenuPanel.addView(itemView);
+            }
+        }
+
+        private TextView createMenuItemView(String text, boolean isSelected) {
+            TextView textView = new TextView(getContext());
+            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                    LayoutParams.MATCH_PARENT,
+                    DpUtils.dp2px(getContext(), 28)
+            );
+            textView.setLayoutParams(layoutParams);
+            textView.setGravity(Gravity.CENTER);
+            textView.setText(text);
+            textView.setTextSize(12f);
+            textView.setTextColor(isSelected ? speedResolutionActiveTextColor : speedResolutionNormalTextColor);
+            textView.setBackgroundColor(isSelected ? Color.parseColor("#40FFFFFF") : Color.TRANSPARENT);
+            return textView;
         }
     }
 
@@ -308,6 +569,9 @@ public class RecommendFragment extends Fragment {
                     .playSingleItem(true);
             ShortPlayFragment detailFragment = PSSDK.createDetailFragment(shortPlay, builder.build(), new PSSDK.ShortPlayDetailPageListener() {
                 private DramaPlayActivity.ProgressChangeListener progressChangeListener;
+                private ResolutionChangeListener resolutionChangeListener;
+                private Resolution[] resolutions;
+                private Resolution currentResolution;
                 @Override
                 public void onOverScroll(int direction) {
 
@@ -368,14 +632,29 @@ public class RecommendFragment extends Fragment {
 
                 @Override
                 public void onVideoInfoFetched(ShortPlay shortPlay, int index, PSSDK.VideoPlayInfo videoPlayInfo) {
-
+                    resolutions = videoPlayInfo.supportResolutions;
+                    currentResolution = videoPlayInfo.currentResolution;
+                    if (currentResolution == null && resolutions != null) {
+                        for (Resolution resolution : resolutions) {
+                            if (resolution != null) {
+                                currentResolution = resolution;
+                                break;
+                            }
+                        }
+                    }
+                    if (resolutionChangeListener != null) {
+                        if (resolutionChangeListener instanceof CustomOverlayView) {
+                            ((CustomOverlayView) resolutionChangeListener).setResolutionData(resolutions, currentResolution);
+                        }
+                        resolutionChangeListener.onResolutionChanged(currentResolution == null ? "" : currentResolution.toString());
+                    }
                 }
 
                 @Override
                 public List<View> onObtainPlayerControlViews() {
                     ArrayList<View> views = new ArrayList<>();
 
-                    // 分享按钮
+                    // 鍒嗕韩鎸夐挳
                     FragmentActivity activity = containerFragment.getActivity();
                     DramaPlayActivity.CustomShareView shareView = new DramaPlayActivity.CustomShareView(activity);
                     views.add(shareView);
@@ -392,11 +671,11 @@ public class RecommendFragment extends Fragment {
                             intent.setType("text/plain");
                             intent.putExtra(Intent.EXTRA_SUBJECT, shortPlay.title);
                             intent.putExtra(Intent.EXTRA_TEXT, shortPlay.desc);
-                            activity.startActivity(Intent.createChooser(intent, "分享短剧"));
+                            activity.startActivity(Intent.createChooser(intent, "鍒嗕韩鐭墽"));
                         }
                     });
 
-                    // 点赞按钮
+                    // 鐐硅禐鎸夐挳
                     DramaPlayActivity.CustomLikeView customLikeView = new DramaPlayActivity.CustomLikeView(activity);
                     FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                     params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
@@ -405,7 +684,7 @@ public class RecommendFragment extends Fragment {
                     customLikeView.setLayoutParams(params);
                     views.add(customLikeView);
 
-                    // 收藏按钮
+                    // 鏀惰棌鎸夐挳
                     DramaPlayActivity.CustomCollectView collectView = new DramaPlayActivity.CustomCollectView(activity);
                     params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                     params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
@@ -420,6 +699,8 @@ public class RecommendFragment extends Fragment {
                     params.bottomMargin = DpUtils.dp2px(activity, 20);
                     views.add(customOverlayView);
                     progressChangeListener = customOverlayView;
+                    resolutionChangeListener = customOverlayView;
+                    customOverlayView.setResolutionData(resolutions, currentResolution);
 
                     return views;
                 }
@@ -448,7 +729,24 @@ public class RecommendFragment extends Fragment {
             notifyItemRangeInserted(size, fragments.size());
         }
 
+        public void pauseAllPlayback() {
+            for (ShortPlayFragment fragment : new ArrayList<>(fragmentMap.values())) {
+                if (fragment != null) {
+                    fragment.pausePlay();
+                }
+            }
+        }
+
+        public void stopAllPlayback() {
+            for (ShortPlayFragment fragment : new ArrayList<>(fragmentMap.values())) {
+                if (fragment != null) {
+                    fragment.stopPlay();
+                }
+            }
+        }
+
         public void destroy() {
+            stopAllPlayback();
             fragmentMap.clear();
         }
     }
@@ -456,4 +754,8 @@ public class RecommendFragment extends Fragment {
 
 
 }
+
+
+
+
 

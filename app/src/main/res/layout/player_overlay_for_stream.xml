@@ -6,16 +6,67 @@
 
     <TextView
         android:id="@+id/tv_speed"
-        android:layout_width="56dp"
+        android:layout_width="wrap_content"
         android:layout_height="28dp"
         android:layout_gravity="right|top"
-        android:layout_marginTop="16dp"
-        android:layout_marginRight="16dp"
+        android:layout_marginTop="20dp"
+        android:layout_marginRight="88dp"
         android:background="@drawable/bg_black_round_2dp"
+        android:drawableStart="@drawable/beis_selector"
+        android:drawablePadding="4dp"
         android:gravity="center"
-        android:text="1.0x"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:text="1.0X"
         android:textColor="@android:color/white"
         android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/tv_resolution"
+        android:layout_width="wrap_content"
+        android:layout_height="28dp"
+        android:layout_gravity="right|top"
+        android:layout_marginTop="20dp"
+        android:layout_marginRight="16dp"
+        android:background="@drawable/bg_black_round_2dp"
+        android:drawableStart="@drawable/res_selector"
+        android:drawablePadding="4dp"
+        android:gravity="center"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:text="360P"
+        android:textColor="@color/res_text_color"
+        android:textSize="12sp" />
+
+    <LinearLayout
+        android:id="@+id/ll_speed_resolution_menu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right|top"
+        android:layout_marginTop="50dp"
+        android:layout_marginRight="16dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/ll_speed_menu_panel"
+            android:layout_width="56dp"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="8dp"
+            android:background="@drawable/bg_black_round_2dp"
+            android:orientation="vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+
+        <LinearLayout
+            android:id="@+id/ll_resolution_menu_panel"
+            android:layout_width="70dp"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_black_round_2dp"
+            android:orientation="vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"

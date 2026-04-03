@@ -1,98 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    android:background="@drawable/bg_follow_item_card"
+    android:padding="8dp">
 
     <com.dramamore.shorts.yanqin.widget.RoundImageView
         android:id="@+id/ic_cover"
-        android:layout_width="110dp"
-        android:layout_height="160dp"
-        android:scaleType="fitXY"
+        android:layout_width="98dp"
+        android:layout_height="138dp"
+        android:scaleType="centerCrop"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- 底部数值 -->
-    <TextView
-        android:id="@+id/tv_hot_value"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@android:color/white"
-        android:textSize="10sp"
-        app:layout_constraintStart_toStartOf="@id/ic_cover"
-        app:layout_constraintBottom_toBottomOf="@id/ic_cover"
-        android:layout_margin="4dp"
-        android:text="" />
-
     <View
-        android:layout_width="match_parent"
-        android:layout_height="25dp"
+        android:id="@+id/v_cover_bottom_mask"
+        android:layout_width="98dp"
+        android:layout_height="24dp"
         android:background="@drawable/bottom_radius_bg"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintBottom_toBottomOf="@id/ic_cover"
-        />
+        app:layout_constraintStart_toStartOf="@id/ic_cover" />
 
-    <!-- 集数 -->
     <TextView
         android:id="@+id/tv_episode"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="6dp"
+        android:layout_marginBottom="4dp"
         android:textColor="@android:color/white"
-        android:textSize="10sp"
-        app:layout_constraintEnd_toEndOf="@id/ic_cover"
+        android:textSize="11sp"
         app:layout_constraintBottom_toBottomOf="@id/ic_cover"
-        android:layout_margin="4dp"
-        android:text="" />
+        app:layout_constraintEnd_toEndOf="@id/ic_cover" />
 
-    <!-- 标题：注意这里不要 margin 太多 -->
     <TextView
         android:id="@+id/tv_name"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:textColor="@android:color/white"
-        android:layout_marginTop="5dp"
-        android:layout_marginStart="20dp"
-        app:layout_constraintStart_toEndOf="@+id/ic_cover"
-        app:layout_constraintTop_toTopOf="@id/ic_cover"
-        android:maxLines="1"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="4dp"
         android:ellipsize="end"
-        android:text="" />
+        android:maxLines="1"
+        android:textColor="@android:color/white"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/ic_cover"
+        app:layout_constraintTop_toTopOf="@id/ic_cover" />
 
     <LinearLayout
         android:id="@+id/ll_tag_layout"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginEnd="8dp"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:layout_marginTop="10dp"
-        android:layout_marginStart="20dp"
-        app:layout_constraintStart_toEndOf="@+id/ic_cover"
-        app:layout_constraintTop_toBottomOf="@id/tv_name"
-        >
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/ic_cover"
+        app:layout_constraintTop_toBottomOf="@id/tv_name">
 
         <TextView
             android:id="@+id/tv_saw_num"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/c_F44F3A"
-            android:textSize="14sp"
-            android:text="@string/s_saw_num"
-            />
+            android:textColor="#F44F3A"
+            android:textSize="15sp" />
 
     </LinearLayout>
 
     <TextView
         android:id="@+id/tv_desc"
-        android:textSize="12sp"
-        app:layout_constraintStart_toEndOf="@+id/ic_cover"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/ll_tag_layout"
-        android:layout_marginTop="10dp"
-        android:layout_marginStart="20dp"
-        android:textColor="@android:color/darker_gray"
-        android:maxLines="4"
-        android:ellipsize="end"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:ellipsize="end"
+        android:maxLines="4"
+        android:textColor="#B3FFFFFF"
+        android:textSize="13sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/ic_cover"
+        app:layout_constraintTop_toBottomOf="@id/ll_tag_layout" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

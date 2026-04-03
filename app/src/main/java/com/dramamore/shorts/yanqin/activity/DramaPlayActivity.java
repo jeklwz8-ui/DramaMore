@@ -87,18 +87,19 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private static final String EXTRA_SHORT_PLAY = "short_play";
     private static final String EXTRA_SHORT_PLAY_INDEX = "short_play_index";
     private static final String EXTRA_SHORT_PLAY_FROM_SECONDS = "seconds";
-    private static final int REQUEST_CODE_CHOOSE_RESOLUTION = 1; // 选择分辨率
-    private static final int REQUEST_CODE_CHOOSE_INDEX = 2; // 选择索引
-    private static final int FIXED_BOTTOM_BAR_HEIGHT_DP = 25; // 底部固定栏高度
-    private static final int FIXED_BOTTOM_BAR_SCREEN_GAP_DP = 8; // 底部固定栏与屏幕的间距
-    private static final int PROGRESS_TO_CHOOSE_GAP_DP = 5; // 进度条与选择条的间距
-    private static final int BRIEF_TO_PROGRESS_GAP_DP = 8; //简介与进度条的间距
-    private static final float MAX_VIDEO_SPEED = 3.0f; // 最大视频速度
+    private static final int REQUEST_CODE_CHOOSE_RESOLUTION = 1; // 閫夋嫨鍒嗚鲸鐜?
+    private static final int REQUEST_CODE_CHOOSE_INDEX = 2; // 閫夋嫨绱㈠紩
+    private static final int FIXED_BOTTOM_BAR_HEIGHT_DP = 25; // 搴曢儴鍥哄畾鏍忛珮搴?
+    private static final int FIXED_BOTTOM_BAR_SCREEN_GAP_DP = 8; // 搴曢儴鍥哄畾鏍忎笌灞忓箷鐨勯棿璺?
+    private static final int PROGRESS_TO_CHOOSE_GAP_DP = 5; // 杩涘害鏉′笌閫夋嫨鏉＄殑闂磋窛
+    private static final int BRIEF_TO_PROGRESS_GAP_DP = 8; //绠€浠嬩笌杩涘害鏉＄殑闂磋窛
+    private static final float MAX_VIDEO_SPEED = 3.0f; // 鏈€澶ц棰戦€熷害
     private static final float[] PLAY_SPEEDS = new float[]{1.0f, 1.5f, 2.0f};
     private static final String[] PLAY_SPEED_LABELS = new String[]{"1.0X", "1.5X", "2.0X"};
+    private static final String DEFAULT_RESOLUTION_TEXT = "360P";
     private final List<PAGNativeAd> feedAds = new ArrayList<>();
     /**
-     * 宸茶В閿佺殑鍓ч泦
+     * 瀹歌尪袙闁夸胶娈戦崜褔娉?
      */
     private final SparseIntArray unlockedIndexes = new SparseIntArray();
     private final PlayHistoryHelper.PlayHistory playHistory = new PlayHistoryHelper.PlayHistory();
@@ -156,7 +157,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         shortPlay = (ShortPlay) parcelableShortPlay;
 
-        // 娴嬭瘯gson搴忓垪鍖栫殑鍏煎鎬?
+        // 濞村鐦痝son鎼村繐鍨崠鏍畱閸忕厧顔愰幀?
         Gson gson = new Gson();
         String json = gson.toJson(shortPlay);
         shortPlay = gson.fromJson(json, ShortPlay.class);
@@ -189,7 +190,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         // Fallback for devices/skins where insets callback may be delayed.
         playRoot.post(() -> applyBottomBarsLayout(0));
 
-        // 棰勫姞杞戒俊鎭祦骞垮憡
+        // 妫板嫬濮炴潪鎴掍繆閹垱绁﹂獮鍨啞
         App.ensurePangleAdsSdkInit(getApplicationContext(), () -> {
             if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
                 return;
@@ -224,7 +225,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     }
 
     private void showDetailFragment(ShortPlay shortPlay, int startFromIndex, int startFromSeconds) {
-        // 榛樿鍓?闆嗚В閿?
+        // 姒涙顓婚崜?闂嗗棜袙闁?
         for (int i = 1; i <= 5; i++) {
             unlockedIndexes.put(i, 1);
         }
@@ -234,9 +235,9 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         builder.displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_TITLE, false);
         builder.displayProgressBar(false);
         builder.startPlayIndex(startFromIndex);
-        builder.enableImmersiveMode(10000) // 銆愬彲閫夈€戞挱鏀鹃〉鏃犳搷浣渪xxms鍚庨殣钘忔枃瀛楄繘鍏ユ矇娴稿紡妯″紡锛岄粯璁や笉鍚敤姝ゅ姛鑳斤紝鍚敤鏃跺彲鎸囧畾鏃堕棿
-                .playSingleItem(false); // 銆愬彲閫夈€戝彧鎾斁涓€闆嗘ā寮忥紝鐢ㄤ簬鍦ㄥ紑鍙戣€呯敤澶氫釜鎾斁椤礔ragment瀵硅薄鏋勯€犳粦鍔ㄥ垏鍓у満鏅椂锛岄粯璁alse
-        // 寮€鍚嚜鍔ㄦ挱鏀句笅涓€闆?
+        builder.enableImmersiveMode(10000) // 閵嗘劕褰查柅澶堚偓鎴炴尡閺€楣冦€夐弮鐘虫惙娴ｆ釜xxms閸氬酣娈ｉ挊蹇旀瀮鐎涙绻橀崗銉︾焽濞寸绱″Ο鈥崇础閿涘矂绮拋銈勭瑝閸氼垳鏁ゅ銈呭閼虫枻绱濋崥顖滄暏閺冭泛褰查幐鍥х暰閺冨爼妫?
+                .playSingleItem(false); // 閵嗘劕褰查柅澶堚偓鎴濆涧閹绢厽鏂佹稉鈧梿鍡樐佸蹇ョ礉閻劋绨崷銊ョ磻閸欐垼鈧懐鏁ゆ径姘嚋閹绢厽鏂佹い绀攔agment鐎电钖勯弸鍕偓鐘崇拨閸斻劌鍨忛崜褍婧€閺咁垱妞傞敍宀勭帛鐠侇槍alse
+        // 瀵偓閸氼垵鍤滈崝銊︽尡閺€鍙ョ瑓娑撯偓闂?
         builder.enableAutoPlayNext(true);
         builder.startPlayAtTimeSeconds(startFromSeconds);
         builder.hideLeftTopCloseAndTitle(false, new PSSDK.ShortPlayDetailPageCloseListener() {
@@ -247,12 +248,12 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             }
         });
 
-        // 閰嶇疆骞垮憡绛栫暐
+        // 闁板秶鐤嗛獮鍨啞缁涙牜鏆?
         builder.adCustomProvider(new PSSDK.AdCustomProvider() {
             @Override
             public List<Integer> getDetailDrawAdPositions() {
                 ArrayList<Integer> integers = new ArrayList<>();
-                // 鍦ㄧ1闆嗐€佺3闆嗐€佺50闆嗗悗闈㈡彃鍏ュ箍鍛?
+                // 閸︺劎顑?闂嗗棎鈧胶顑?闂嗗棎鈧胶顑?0闂嗗棗鎮楅棃銏″絻閸忋儱绠嶉崨?
                         /*integers.add(1);
                         integers.add(3);
                         integers.add(50);*/
@@ -264,20 +265,20 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 return new PSSDK.DrawAdProvider() {
                     @Override
                     public void onPrepareAd() {
-                        // 蹇垝鍒板箍鍛婃彃鍏ヤ綅缃椂璋冪敤锛屽彲浠ュ湪杩欓噷璇锋眰骞垮憡
+                        // 韫囶偄鍨濋崚鏉跨畭閸涘﹥褰冮崗銉ょ秴缂冾喗妞傜拫鍐暏閿涘苯褰叉禒銉ユ躬鏉╂瑩鍣风拠閿嬬湴楠炲灝鎲?
                         loadPangleFeedAd();
                     }
 
                     @Override
                     public View onObtainAdView(int position, int index) {
-                        // 杩斿洖骞垮憡View锛屽娌℃湁鍙敤骞垮憡鍒欒繑鍥瀗ull
+                        // 鏉╂柨娲栭獮鍨啞View閿涘苯顩у▽鈩冩箒閸欘垳鏁ら獮鍨啞閸掓瑨绻戦崶鐎梪ll
                         //return createFeedAdView();
                         return null;
                     }
 
                     @Override
                     public void onDestroy() {
-                        // 鎾斁椤甸€€鍑烘椂璋冪敤锛屽彲鍦ㄨ繖閲岄噴鏀惧箍鍛婅祫婧?
+                        // 閹绢厽鏂佹い鐢糕偓鈧崙鐑樻鐠嬪啰鏁ら敍灞藉讲閸︺劏绻栭柌宀勫櫞閺€鎯х畭閸涘﹨绁┃?
                     }
                 };
             }
@@ -306,14 +307,14 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             @Override
             public boolean onPlayFailed(PSSDK.ErrorInfo errorInfo) {
-                // 瑙嗛鎾斁澶辫触
+                // 鐟欏棝顣堕幘顓熸杹婢惰精瑙?
                 Logs.i(TAG, "onPlayFailed() called with: errorInfo = [" + errorInfo + "]");
                 if (errorInfo.code == PSSDK.ErrorInfo.ERROR_CODE_CURRENT_COUNTRY_NOT_SUPPORT) {
-                    // 褰撳墠鍦板尯涓嶆敮鎸佹挱鏀撅紝SDK浼歍oast鎻愮ず锛屽紑鍙戣€呬篃鍙互鍦ㄦ鏃舵樉绀哄脊绐楃瓑鏇村弸濂界殑鎻愮ず
+                    // 瑜版挸澧犻崷鏉垮隘娑撳秵鏁幐浣规尡閺€鎾呯礉SDK娴兼瓖oast閹绘劗銇氶敍灞界磻閸欐垼鈧懍绡冮崣顖欎簰閸︺劍顒濋弮鑸垫▔缁€鍝勮剨缁愭鐡戦弴鏉戝几婵傜晫娈戦幓鎰仛
                     AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(DramaPlayActivity.this);
                     dialogBuilder.setMessage("Current region is not supported for playback");
                     dialogBuilder.create().show();
-                    // return true琛ㄧず鏇挎崲鎺塖DK鍐呯殑Toast鎻愮ず
+                    // return true鐞涖劎銇氶弴鎸庡床閹哄DK閸愬懐娈慣oast閹绘劗銇?
                     return true;
                 }
                 return false;
@@ -321,13 +322,13 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             @Override
             public void onShortPlayPlayed(ShortPlay shortPlay, int index, EpisodeData episodeData) {
-                // 姣忎竴闆嗗紑濮嬫挱鏀炬椂鍥炶皟锛屽彲鐢ㄦ潵璁板綍鎾斁鍘嗗彶
+                // 濮ｅ繋绔撮梿鍡楃磻婵鎸遍弨鐐閸ョ偠鐨熼敍灞藉讲閻劍娼电拋鏉跨秿閹绢厽鏂侀崢鍡楀蕉
                 Logs.i(TAG, "onShortPlayPlayed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
                 if (bottomChooseIndexTitleView != null) {
                     bottomChooseIndexTitleView.setText(buildChooseIndexTitle(shortPlay, index));
                 }
 
-                if (shortPlay.isCollected) {//宸叉敹钘忓垯鏇存柊鍝竴闆?
+                if (shortPlay.isCollected) {//瀹稿弶鏁归挊蹇撳灟閺囧瓨鏌婇崫顏冪闂?
                     ShortUtils.followInsertOrDelete(DramaPlayActivity.this, true, shortPlay, index);
                 }
                 ShortUtils.historyInsert(DramaPlayActivity.this, shortPlay, index);
@@ -344,9 +345,9 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 currentResolution = null;
 
                 if (type == ItemType.AD) {
-                    // 鍒楄〃閲屾槸骞垮憡鏃讹紝搴曢儴灏变笉鍚屾椂鏄剧ずbanner浜嗭紝褰卞搷浣撻獙锛屾崲鎴愭櫘閫歷iew
+                    // 閸掓銆冮柌灞炬Ц楠炲灝鎲￠弮璁圭礉鎼存洟鍎寸亸鍙樼瑝閸氬本妞傞弰鍓с仛banner娴滃棴绱濊ぐ鍗炴惙娴ｆ捇鐛欓敍灞惧床閹存劖娅橀柅姝穒ew
                 } else {
-                    // 鍒楄〃閲屾槸瑙嗛锛屽彲浠ユ樉绀哄簳閮╞anner
+                    // 閸掓銆冮柌灞炬Ц鐟欏棝顣堕敍灞藉讲娴犮儲妯夌粈鍝勭俺闁暈anner
                     if (bannerView != null) {
                     } else {
                         loadPangleBannerAd();
@@ -366,22 +367,22 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             @Override
             public void onEnterImmersiveMode() {
-                // 杩涘叆娌夋蹈寮忔ā寮?
+                // 鏉╂稑鍙嗗▽澶嬭箞瀵繑膩瀵?
                 Logs.i(TAG, "onEnterImmersiveMode() called");
                 updateImmersiveModeUi(true);
             }
 
             @Override
             public void onExitImmersiveMode() {
-                // 閫€鍑烘矇娴稿紡妯″紡
+                // 闁偓閸戠儤鐭囧ù绋跨础濡€崇础
                 Logs.i(TAG, "onExitImmersiveMode() called");
                 updateImmersiveModeUi(false);
             }
 
             @Override
             public boolean isNeedBlock(ShortPlay shortPlay, int index) {
-                // 璇㈤棶index闆嗘槸鍚﹂攣瀹氾紝true閿佸畾鍚庡垯璇ラ泦鏃犳硶鑷姩鎾斁锛岄渶瑕侀€氳繃showAdIfNeed閲屽畬鎴愯В閿?
-                // 榛樿瀵规瘡涓€闆嗗潎浼氳闂紝涓€鏃﹁繑鍥瀎alse鍒欐鎾斁椤典笉浼氬啀璇㈤棶璇ラ泦
+                // 鐠囥垽妫秈ndex闂嗗棙妲搁崥锕傛敚鐎规熬绱漷rue闁夸礁鐣鹃崥搴″灟鐠囥儵娉﹂弮鐘崇《閼奉亜濮╅幘顓熸杹閿涘矂娓剁憰渚€鈧俺绻僺howAdIfNeed闁插苯鐣幋鎰掗柨?
+                // 姒涙顓荤€佃鐦℃稉鈧梿鍡楁綆娴兼俺顕楅梻顕嗙礉娑撯偓閺冿箒绻戦崶鐎巃lse閸掓瑦顒濋幘顓熸杹妞ゅ吀绗夋导姘晙鐠囥垽妫剁拠銉╂肠
                 Logs.i(TAG, "isNeedBlock() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
                 //return unlockedIndexes.get(index, 0) != 1;
                 return false;
@@ -389,7 +390,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
             @Override
             public void showAdIfNeed(ShortPlay shortPlay, int index, PSSDK.ShortPlayBlockResultListener listener) {
-                // 褰搃sNeedBlock鎸囧畾index闆嗛攣瀹氬悗锛屽湪鐢ㄦ埛鍒囨崲鍒拌闆嗘椂锛孲DK涓嶄細鎾斁瑙嗛锛屽悓鏃朵細璋冪敤姝ゅ洖璋冿紝鍙湪姝ゆ椂灞曠ず婵€鍔卞箍鍛婃垨璐拱绛変氦浜掞紝鐢ㄦ埛杈炬垚鍚庤皟鐢╨istener.onShortPlayUnlocked鍛婄煡SDK鍙挱鏀捐闆?
+                // 瑜版悆sNeedBlock閹稿洤鐣緄ndex闂嗗棝鏀ｇ€规艾鎮楅敍灞芥躬閻劍鍩涢崚鍥ㄥ床閸掓媽顕氶梿鍡樻閿涘DK娑撳秳绱伴幘顓熸杹鐟欏棝顣堕敍灞芥倱閺冩湹绱扮拫鍐暏濮濄倕娲栫拫鍐跨礉閸欘垰婀銈嗘鐏炴洜銇氬┑鈧崝鍗炵畭閸涘﹥鍨ㄧ拹顓濇嫳缁涘姘︽禍鎺炵礉閻劍鍩涙潏鐐灇閸氬氦鐨熼悽鈺╥stener.onShortPlayUnlocked閸涘﹦鐓DK閸欘垱鎸遍弨鎹愵嚉闂?
                 Logs.i(TAG, "showAdIfNeed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "], listener = [" + listener + "]");
                 showUnLockDialog(shortPlay, index, listener);
             }
@@ -397,10 +398,11 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             @Override
             public void onVideoInfoFetched(ShortPlay shortPlay, int index, PSSDK.VideoPlayInfo videoPlayInfo) {
                 currentVideoPlayInfo = videoPlayInfo;
-                // 姣忎竴闆嗚棰戝噯澶囧ソ鏃惰皟鐢ㄦ鏂规硶鍛婄煡鏈泦鐨勮棰戜俊鎭?
+                // 濮ｅ繋绔撮梿鍡氼潒妫版垵鍣径鍥с偨閺冩儼鐨熼悽銊︻劃閺傝纭堕崨濠勭叀閺堫剟娉﹂惃鍕潒妫版垳淇婇幁?
                 resolutions = videoPlayInfo.supportResolutions;
-                // 褰撳墠鍒嗚鲸鐜?
+                // 瑜版挸澧犻崚鍡氶哺閻?
                 currentResolution = videoPlayInfo.currentResolution;
+                currentResolution = resolveEffectiveResolution(currentResolution);
 
                 if (resolutionChangeListener != null) {
                     resolutionChangeListener.onResolutionChanged(getResolutionLabel(currentResolution));
@@ -413,7 +415,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             public List<View> onObtainPlayerControlViews() {
                 ArrayList<View> views = new ArrayList<>();
 
-                // 鍒嗕韩鎸夐挳
+                // 閸掑棔闊╅幐澶愭尦
                 CustomShareView shareView = new CustomShareView(getApplicationContext());
                 views.add(shareView);
                 shareView.setImageResource(R.drawable.share);
@@ -429,11 +431,11 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                         intent.setType("text/plain");
                         intent.putExtra(Intent.EXTRA_SUBJECT, shortPlay.title);
                         intent.putExtra(Intent.EXTRA_TEXT, shortPlay.desc);
-                        startActivity(Intent.createChooser(intent, "鍒嗕韩鐭墽"));
+                        startActivity(Intent.createChooser(intent, "閸掑棔闊╅惌顓炲⒔"));
                     }
                 });
 
-                // 鐐硅禐鎸夐挳
+                // 閻愮绂愰幐澶愭尦
                 CustomLikeView customLikeView = new CustomLikeView(getApplicationContext());
                 FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                 params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
@@ -442,7 +444,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 customLikeView.setLayoutParams(params);
                 views.add(customLikeView);
 
-                // 鏀惰棌鎸夐挳
+                // 閺€鎯版閹稿鎸?
                 CustomCollectView collectView = new CustomCollectView(getApplicationContext());
                 params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
                 params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
@@ -458,7 +460,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 loadingView.setLayoutParams(loadingLP);
                 views.add(loadingView);
 
-                // 鑷畾涔夊け璐ョ晫闈?
+                // 閼奉亜鐣炬稊澶娿亼鐠愩儳鏅棃?
                 CustomErrorView errorView = new CustomErrorView(getApplicationContext());
                 errorView.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -468,7 +470,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 });
                 views.add(errorView);
 
-                // 鑷畾涔夎繘搴︽潯
+                // 閼奉亜鐣炬稊澶庣箻鎼达附娼?
                 customOverlayView = new CustomOverlayView(getApplicationContext());
                 params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
                 params.bottomMargin = 0;
@@ -486,7 +488,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             return;
         }
 
-        // 灏嗘挱鏀鹃〉灞曠ず鍑烘潵
+        // 鐏忓棙鎸遍弨楣冦€夌仦鏇犮仛閸戠儤娼?
         getSupportFragmentManager().beginTransaction().add(R.id.fragment_container, detailFragment).show(detailFragment).commit();
 
     }
@@ -607,7 +609,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                         if (listener != null) {
                             listener.onShortPlayUnlocked();
                         }
-                        // 璇㈤棶杩炵画瑙ｉ攣
+                        // 鐠囥垽妫舵潻鐐电敾鐟欙綁鏀?
                         showUnlockMoreDialog();
                     }
                 });
@@ -672,12 +674,12 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 public void onAdDismissed() {
                     listener.onShortPlayUnlocked();
 
-                    // 鐢ㄦ埛鐪嬪箍鍛婅В閿佷笂鎶ユ棩蹇?
+                    // 閻劍鍩涢惇瀣畭閸涘﹨袙闁夸椒绗傞幎銉︽）韫?
                     PSSDK.RevenueInfo revenueInfo = new PSSDK.RevenueInfo(PSSDK.RevenueInfo.RevenueType.IAA, PSSDK.RevenueInfo.CurrencyType.USD);
-                    revenueInfo.revenue(0.1f); // 灞曠ず骞垮憡甯︽潵鐨勬敹鐩婏紝濡傛灉鏄疌PM鐩稿叧鎺ュ彛锛岄渶瑕佹彁渚汣PM/1000鐨勮绠楃粨鏋滐紝鍗曚綅缇庡厓
-                    revenueInfo.adnName("xxx"); // 骞垮憡ADN鍚?
-                    revenueInfo.adFormat(PSSDK.RevenueInfo.AdFormat.REWARD_VIDEO); // 骞垮憡鏍峰紡锛屾瘮濡傛縺鍔辫棰戠瓑
-                    revenueInfo.aboutUnlock(true); // 琛ㄧず鏄拰瑙ｉ攣鏈夊叧
+                    revenueInfo.revenue(0.1f); // 鐏炴洜銇氶獮鍨啞鐢附娼甸惃鍕暪閻╁绱濇俊鍌涚亯閺勭枌PM閻╃鍙ч幒銉ュ經閿涘矂娓剁憰浣瑰絹娓氭保PM/1000閻ㄥ嫯顓哥粻妤冪波閺嬫粣绱濋崡鏇氱秴缂囧骸鍘?
+                    revenueInfo.adnName("xxx"); // 楠炲灝鎲DN閸?
+                    revenueInfo.adFormat(PSSDK.RevenueInfo.AdFormat.REWARD_VIDEO); // 楠炲灝鎲￠弽宄扮础閿涘本鐦俊鍌涚负閸旇精顫嬫０鎴犵搼
+                    revenueInfo.aboutUnlock(true); // 鐞涖劎銇氶弰顖氭嫲鐟欙綁鏀ｉ張澶婂彠
 
                     PSSDK.reportRevenueInfo(revenueInfo);
                 }
@@ -688,7 +690,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             loadRewardAd(new PAGRewardedAdLoadCallback() {
                 @Override
                 public void onError(@NonNull PAGErrorModel pagErrorModel) {
-                    toast("鍔犺浇骞垮憡澶辫触");
+                    toast("load ad failed");
                 }
 
                 @Override
@@ -776,10 +778,28 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         return resolution.toString().toUpperCase(Locale.US);
     }
 
+    @Nullable
+    private Resolution resolveEffectiveResolution(@Nullable Resolution preferredResolution) {
+        if (preferredResolution != null) {
+            return preferredResolution;
+        }
+        if (resolutions != null) {
+            for (Resolution resolution : resolutions) {
+                if (resolution != null) {
+                    return resolution;
+                }
+            }
+        }
+        return null;
+    }
+
     private String getResolutionButtonText(@Nullable Resolution resolution) {
-        String resolutionLabel = getResolutionLabel(resolution);
+        String resolutionLabel = getResolutionLabel(resolveEffectiveResolution(resolution));
         if (TextUtils.isEmpty(resolutionLabel)) {
-            return "HD 1080P";
+            return DEFAULT_RESOLUTION_TEXT;
+        }
+        if (resolutionLabel.startsWith("HD ")) {
+            return resolutionLabel;
         }
         if (resolutionLabel.contains("1080") || resolutionLabel.contains("720")) {
             return "HD " + resolutionLabel;
@@ -900,7 +920,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
     void autoUnlock(int expectUnlockCount) {
         int finalUnlockCount = 0;
-        // 寰€鍚庤В閿?
+        // 瀵扳偓閸氬氦袙闁?
         for (int i = playHistory.index; i <= shortPlay.total && expectUnlockCount > 0; i++) {
             if (unlockedIndexes.get(i, 0) != 1) {
                 unlockedIndexes.put(i, 1);
@@ -909,7 +929,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 finalUnlockCount++;
             }
         }
-        // 杩樻湁澶氱殑锛屼粠鍓嶉潰妫€鏌ヨВ閿?
+        // 鏉╂ɑ婀佹径姘辨畱閿涘奔绮犻崜宥夋桨濡偓閺屻儴袙闁?
         if (expectUnlockCount > 0) {
             for (int i = 1; i < playHistory.index && expectUnlockCount > 0; i++) {
                 if (unlockedIndexes.get(i, 0) != 1) {
@@ -1238,7 +1258,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         public void onAdShowed() {
             okBtn.setCompoundDrawables(null, null, null, null);
             okBtn.setText("In the lottery");
-            // 3s鍚庢樉绀烘娊濂栫粨鏋?
+            // 3s閸氬孩妯夌粈鐑樺▕婵傛牜绮ㄩ弸?
             mHandler.sendEmptyMessageDelayed(MSG_SHOW_LOTTERY_RESULT, 1000);
             hasShowAd = true;
         }
@@ -1300,7 +1320,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     }
 
     /**
-     * 杩炵画瑙ｉ攣寮圭獥
+     * 鏉╃偟鐢荤憴锝夋敚瀵湱鐛?
      */
     public static class UnlockMoreDialog extends DialogFragment implements Handler.Callback {
 
@@ -1797,3 +1817,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
     }
 }
+
+
+
+

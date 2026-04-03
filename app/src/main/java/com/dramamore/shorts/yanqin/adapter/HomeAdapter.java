@@ -33,6 +33,7 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private List<ShortPlay> dataList = new ArrayList<>();
     private List<ShortPlay> bannerDataList = new ArrayList<>();
     private List<ShortPlay> hotDataList = new ArrayList<>();
+    private List<ShortPlay> voiceDataList = new ArrayList<>();
     private List<ShortPlay> mostDataList = new ArrayList<>();
     private List<ShortPlay> cartoonDataList = new ArrayList<>();
     private BannerManager bannerManager;
@@ -62,6 +63,14 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (newHots != null) {
             this.hotDataList.clear();
             hotDataList.addAll(newHots);
+            notifyItemChanged(0);
+        }
+    }
+
+    public void setHeaderVoiceData(List<ShortPlay> shortPlayList) {
+        if (shortPlayList != null) {
+            this.voiceDataList.clear();
+            voiceDataList.addAll(shortPlayList);
             notifyItemChanged(0);
         }
     }
@@ -115,6 +124,12 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     MoreActivity.start(holder.itemView.getContext(), 1, holder.itemView.getContext().getString(R.string.s_hot_short));
                 }
             });
+            headerViewHolder.tvVoiceMore.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    MoreActivity.start(holder.itemView.getContext(), 4, holder.itemView.getContext().getString(R.string.s_voice_drama));
+                }
+            });
             headerViewHolder.tvMostMore.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -134,6 +149,32 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 for (int i = 0; i < hotDataList.size(); i++) {
                     ShortPlay shortPlay = hotDataList.get(i);
                     View childAt = headerViewHolder.llHot.getChildAt(i);
+                    if (childAt != null) {
+                        childAt.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                DramaPlayActivity.start((AppCompatActivity) holder.itemView.getContext(), shortPlay);
+                            }
+                        });
+                        RoundImageView imageView = childAt.findViewById(R.id.ic_cover);
+                        imageView.setRadius(10);
+                        Glide.with(holder.itemView.getContext())
+                                .load(shortPlay.coverImage)
+                                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                                .into(imageView);
+                        TextView tvHotValue = childAt.findViewById(R.id.tv_hot_value);
+                        tvHotValue.setText(ShortUtils.convertToK(shortPlay.totalCollectCount));
+                        TextView tvEpisode = childAt.findViewById(R.id.tv_episode);
+                        tvEpisode.setText(shortPlay.total + holder.itemView.getContext().getString(R.string.s_eps));
+                        TextView tvName = childAt.findViewById(R.id.tv_name);
+                        tvName.setText(shortPlay.title);
+                    }
+                }
+            }
+            if (voiceDataList != null) {
+                for (int i = 0; i < voiceDataList.size(); i++) {
+                    ShortPlay shortPlay = voiceDataList.get(i);
+                    View childAt = headerViewHolder.llVoice.getChildAt(i);
                     if (childAt != null) {
                         childAt.setOnClickListener(new View.OnClickListener() {
                             @Override
@@ -255,9 +296,11 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         ViewPager2 bannerPager;
         LinearLayout indicatorLayout;
         LinearLayout llHot;
+        LinearLayout llVoice;
         LinearLayout llMost;
         LinearLayout llCartoon;
         TextView tvHotMore;
+        TextView tvVoiceMore;
         TextView tvMostMore;
         TextView tvCartoonMore;
         TextView tvBannerTitle;
@@ -275,6 +318,9 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             flSearch = itemView.findViewById(R.id.fl_search);
             llHot = itemView.findViewById(R.id.ll_hot);
             tvHotMore = itemView.findViewById(R.id.tv_hot_more);
+
+            llVoice = itemView.findViewById(R.id.ll_voice);
+            tvVoiceMore = itemView.findViewById(R.id.tv_voice_more);
 
             llMost = itemView.findViewById(R.id.ll_most);
             tvMostMore = itemView.findViewById(R.id.tv_most_more);

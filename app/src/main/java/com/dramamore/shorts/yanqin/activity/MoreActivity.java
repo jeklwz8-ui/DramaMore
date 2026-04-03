@@ -28,6 +28,7 @@ import com.dramamore.shorts.yanqin.adapter.MoreGridSpacingItemDecoration;
 import com.dramamore.shorts.yanqin.adapter.ShortPlayAdapter;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
+import com.dramamore.shorts.yanqin.utils.VoiceDramaRequestHelper;
 
 public class MoreActivity extends AppCompatActivity {
 
@@ -123,6 +124,8 @@ public class MoreActivity extends AppCompatActivity {
             PSSDK.requestDramaByTag(4, currentPage, 20, feedListLoadResult);
         }else if(type==3){//动漫短剧
             PSSDK.requestFeedListByCategoryIds(Arrays.asList(1000701l), null, currentPage, 20,feedListLoadResult);
+        } else if (type == 4) {
+            VoiceDramaRequestHelper.requestVoiceDramaByIp(getApplicationContext(), currentPage, 20, feedListLoadResult);
         }
     }
 

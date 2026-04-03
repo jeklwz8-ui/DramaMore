@@ -30,6 +30,7 @@ import com.dramamore.shorts.yanqin.adapter.GridSpacingItemDecoration;
 import com.dramamore.shorts.yanqin.adapter.HomeAdapter;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
+import com.dramamore.shorts.yanqin.utils.VoiceDramaRequestHelper;
 
 public class HomeFragment extends Fragment {
 
@@ -39,6 +40,7 @@ public class HomeFragment extends Fragment {
     private static final String CACHE_HOME_FEED = "cache_home_feed";
     private static final String CACHE_HOME_BANNER = "cache_home_banner";
     private static final String CACHE_HOME_HOT = "cache_home_hot";
+    private static final String CACHE_HOME_VOICE = "cache_home_voice";
     private static final String CACHE_HOME_MOST = "cache_home_most";
     private static final String CACHE_HOME_CARTOON = "cache_home_cartoon";
     private static final Type SHORT_PLAY_LIST_TYPE = new TypeToken<List<ShortPlay>>() {}.getType();
@@ -51,7 +53,7 @@ public class HomeFragment extends Fragment {
     private boolean hasMore = false;
     private boolean isLoading = false;
     private HomeAdapter adapter;
-    private boolean isInitBannerData, isInitHotData, isInitMostData, isInitCartoonData;
+    private boolean isInitBannerData, isInitHotData, isInitVoiceData, isInitMostData, isInitCartoonData;
     private boolean isHeaderRequestScheduled = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -98,11 +100,13 @@ public class HomeFragment extends Fragment {
         List<ShortPlay> feedCache = readCachedShortPlayList(CACHE_HOME_FEED);
         List<ShortPlay> bannerCache = readCachedShortPlayList(CACHE_HOME_BANNER);
         List<ShortPlay> hotCache = readCachedShortPlayList(CACHE_HOME_HOT);
+        List<ShortPlay> voiceCache = readCachedShortPlayList(CACHE_HOME_VOICE);
         List<ShortPlay> mostCache = readCachedShortPlayList(CACHE_HOME_MOST);
         List<ShortPlay> cartoonCache = readCachedShortPlayList(CACHE_HOME_CARTOON);
 
         boolean hasHeaderCache = (bannerCache != null && !bannerCache.isEmpty())
                 || (hotCache != null && !hotCache.isEmpty())
+                || (voiceCache != null && !voiceCache.isEmpty())
                 || (mostCache != null && !mostCache.isEmpty())
                 || (cartoonCache != null && !cartoonCache.isEmpty());
         if ((feedCache == null || feedCache.isEmpty()) && !hasHeaderCache) {
@@ -116,6 +120,9 @@ public class HomeFragment extends Fragment {
         if (hotCache != null && !hotCache.isEmpty()) {
             adapter.setHeaderHotData(hotCache);
         }
+        if (voiceCache != null && !voiceCache.isEmpty()) {
+            adapter.setHeaderVoiceData(voiceCache);
+        }
         if (mostCache != null && !mostCache.isEmpty()) {
             adapter.setHeaderMostData(mostCache);
         }
@@ -125,7 +132,7 @@ public class HomeFragment extends Fragment {
     }
 
     private void scheduleHeaderDataInitIfNeeded() {
-        if (isHeaderRequestScheduled || (isInitBannerData && isInitHotData && isInitMostData && isInitCartoonData)) {
+        if (isHeaderRequestScheduled || (isInitBannerData && isInitHotData && isInitVoiceData && isInitMostData && isInitCartoonData)) {
             return;
         }
         isHeaderRequestScheduled = true;
@@ -140,6 +147,9 @@ public class HomeFragment extends Fragment {
             if (!isInitHotData) {
                 initHotData();
             }
+            if (!isInitVoiceData) {
+                initVoiceData();
+            }
             if (!isInitMostData) {
                 initMostData();
             }
@@ -147,6 +157,28 @@ public class HomeFragment extends Fragment {
                 initCartoonData();
             }
         }, HEADER_REQUEST_DELAY_MS);
+    }
+
+    private void initVoiceData() {
+        VoiceDramaRequestHelper.requestVoiceDramaByIp(requireContext().getApplicationContext(), 1, 3, new PSSDK.FeedListResultListener() {
+            @Override
+            public void onFail(PSSDK.ErrorInfo errorInfo) {
+                Logs.i(TAG, "initVoiceData-onFail-errorInfo=" + errorInfo);
+                isInitVoiceData = true;
+            }
+
+            @Override
+            public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> feedListLoadResult) {
+                Logs.i(TAG, "initVoiceData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString());
+                isInitVoiceData = true;
+                postToUiIfAlive(() -> {
+                    cacheShortPlayList(CACHE_HOME_VOICE, feedListLoadResult.dataList);
+                    if (adapter != null) {
+                        adapter.setHeaderVoiceData(feedListLoadResult.dataList);
+                    }
+                });
+            }
+        });
     }
 
     private void initBannerData() {

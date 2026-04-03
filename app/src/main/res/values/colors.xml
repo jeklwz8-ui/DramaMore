@@ -3,4 +3,6 @@
     <color name="c_F44F3A">#F44F3A</color>
     <color name="c_595959">#595959</color>
 
+    <color name="transparent">#00000000</color>
+
 </resources>

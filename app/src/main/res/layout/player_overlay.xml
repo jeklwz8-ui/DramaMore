@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -10,12 +10,13 @@
         android:layout_gravity="right|top"
         android:layout_marginTop="16dp"
         android:layout_marginRight="90dp"
-        android:alpha="0.5"
         android:background="@drawable/bg_black_round_2dp"
+        android:drawableStart="@drawable/beis_selector"
+        android:drawablePadding="4dp"
         android:gravity="center"
         android:paddingLeft="8dp"
         android:paddingRight="8dp"
-        android:text="1.0x"
+        android:text="1.0X"
         android:textColor="@android:color/white"
         android:textSize="12sp" />
 
@@ -26,99 +27,96 @@
         android:layout_gravity="right|top"
         android:layout_marginTop="16dp"
         android:layout_marginRight="16dp"
-        android:alpha="0.5"
         android:background="@drawable/bg_black_round_2dp"
+        android:drawableStart="@drawable/res_selector"
+        android:drawablePadding="4dp"
         android:gravity="center"
         android:paddingLeft="8dp"
         android:paddingRight="8dp"
         android:text="1080P"
-        android:textColor="@android:color/white"
+        android:textColor="@color/res_text_color"
         android:textSize="12sp" />
 
-    <!-- 1. 剧集信息：改为纵向排列，使剧名位于封面图下方 -->
+    <LinearLayout
+        android:id="@+id/ll_speed_resolution_menu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right|top"
+        android:layout_marginTop="50dp"
+        android:layout_marginRight="16dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/ll_speed_menu_panel"
+            android:layout_width="56dp"
+            android:layout_height="wrap_content"
+            android:layout_marginRight="8dp"
+            android:background="@drawable/bg_black_round_2dp"
+            android:orientation="vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+
+        <LinearLayout
+            android:id="@+id/ll_resolution_menu_panel"
+            android:layout_width="70dp"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_black_round_2dp"
+            android:orientation="vertical"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+    </LinearLayout>
+
     <LinearLayout
         android:id="@+id/ll_overlay_brief"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="40dp"
         android:layout_gravity="bottom"
         android:layout_marginLeft="12dp"
         android:layout_marginRight="12dp"
-        android:layout_marginBottom="1dp"
-        android:orientation="vertical">
+        android:layout_marginBottom="72dp"
+        android:background="@color/transparent"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
         <ImageView
             android:id="@+id/iv_overlay_cover"
             android:layout_width="28dp"
             android:layout_height="28dp"
-            android:background="@drawable/bg_black_round_2dp"
+            android:layout_marginLeft="8dp"
+            android:background="@android:color/transparent"
             android:scaleType="centerCrop" />
 
         <TextView
             android:id="@+id/tv_overlay_drama_name"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp"
+            android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="@android:color/white"
-            android:textSize="10sp"
-            android:textStyle="bold" />
+            android:textSize="14sp"
+            android:textStyle="normal" />
     </LinearLayout>
 
-    <!-- 2. 选集栏：位于剧集信息下方，进度条上方 -->
-    <LinearLayout
-        android:id="@+id/ll_choose_index"
-        android:layout_width="match_parent"
-        android:layout_height="36dp"
-        android:layout_gravity="bottom"
-        android:layout_marginLeft="8dp"
-        android:layout_marginRight="8dp"
-        android:layout_marginBottom="28dp"
-        android:background="@drawable/bg_black_round_2dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
-        android:visibility="gone">
-
-        <ImageView
-            android:layout_width="16dp"
-            android:layout_height="16dp"
-            android:layout_marginRight="8dp"
-            android:src="@drawable/choose_index" />
-
-        <TextView
-            android:id="@+id/tv_overlay_choose_index_title"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:alpha="0.8"
-            android:text="45 Eps XXX"
-            android:textColor="@android:color/white"
-            android:textSize="12sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:alpha="0.8"
-            android:text="@string/s_select"
-            android:textColor="@android:color/white"
-            android:textSize="12sp" />
-    </LinearLayout>
-
-    <!-- 3. 进度条：位于最下方 -->
     <SeekBar
         android:id="@+id/sb_overlay"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="24dp"
         android:layout_gravity="bottom"
-        android:layout_marginBottom="12dp"
-        android:maxHeight="4dp"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginBottom="32dp"
+        android:minHeight="24dp"
+        android:maxHeight="2dp"
         android:paddingStart="4dp"
         android:paddingEnd="4dp"
         android:progressDrawable="@drawable/custom_seekbar_track"
         android:splitTrack="false"
+        android:thumbOffset="0dp"
         android:thumb="@drawable/custom_thumb"
-        android:visibility="gone" />
+        android:visibility="visible" />
 
 </merge>

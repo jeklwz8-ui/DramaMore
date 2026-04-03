@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -14,6 +15,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.DefaultLifecycleObserver;
@@ -135,8 +137,9 @@ public class RecommendFragment extends Fragment {
 
     private static class CustomOverlayView extends FrameLayout implements PSSDK.IControlView, DramaPlayActivity.ProgressChangeListener {
 
-        private static final float[] PLAY_SPEEDS = new float[]{1.0f, 1.25f, 1.5f, 2.0f};
-        private static final String[] PLAY_SPEED_LABELS = new String[]{"1.0x", "1.25x", "1.5x", "2.0x"};
+        private static final float MAX_VIDEO_SPEED = 3.0f;
+        private static final float[] PLAY_SPEEDS = new float[]{0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 3.0f};
+        private static final String[] PLAY_SPEED_LABELS = new String[]{"0.75x", "1.0x", "1.25x", "1.5x", "2.0x", "3.0x"};
         private final TextView chooseIndexTitleTV;
         private final TextView dramaTitleTV;
         private final TextView dramaDescTV;
@@ -166,11 +169,7 @@ public class RecommendFragment extends Fragment {
             speedTV.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    cyclePlaySpeed();
-                    if (shortPlayFragment != null) {
-                        shortPlayFragment.setVideoSpeed(getCurrentPlaySpeed());
-                    }
-                    speedTV.setText(getCurrentPlaySpeedLabel());
+                    showChoosePlaySpeedPopup(v);
                 }
             });
 
@@ -209,7 +208,7 @@ public class RecommendFragment extends Fragment {
             dramaTitleTV.setText(shortPlay.title);
             dramaDescTV.setText(shortPlay.desc);
             speedTV.setText(getCurrentPlaySpeedLabel());
-            shortPlayFragment.setVideoSpeed(getCurrentPlaySpeed());
+            applyCurrentPlaySpeed();
         }
 
         @Override
@@ -220,16 +219,51 @@ public class RecommendFragment extends Fragment {
             progressBar.setProgress(progress);
         }
 
-        private void cyclePlaySpeed() {
-            currentPlaySpeedIndex = (currentPlaySpeedIndex + 1) % PLAY_SPEEDS.length;
-        }
-
         private float getCurrentPlaySpeed() {
             return PLAY_SPEEDS[currentPlaySpeedIndex];
         }
 
         private String getCurrentPlaySpeedLabel() {
             return PLAY_SPEED_LABELS[currentPlaySpeedIndex];
+        }
+
+        private void showChoosePlaySpeedPopup(@NonNull View anchor) {
+            PopupMenu popupMenu = new PopupMenu(anchor.getContext(), anchor);
+            for (int i = 0; i < PLAY_SPEED_LABELS.length; i++) {
+                popupMenu.getMenu().add(0, i, i, PLAY_SPEED_LABELS[i]);
+            }
+            popupMenu.getMenu().setGroupCheckable(0, true, true);
+            MenuItem currentItem = popupMenu.getMenu().findItem(currentPlaySpeedIndex);
+            if (currentItem != null) {
+                currentItem.setChecked(true);
+            }
+            popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                @Override
+                public boolean onMenuItemClick(MenuItem item) {
+                    int selectedSpeedIndex = item.getItemId();
+                    if (selectedSpeedIndex < 0 || selectedSpeedIndex >= PLAY_SPEEDS.length) {
+                        return false;
+                    }
+                    currentPlaySpeedIndex = selectedSpeedIndex;
+                    applyCurrentPlaySpeed();
+                    speedTV.setText(getCurrentPlaySpeedLabel());
+                    return true;
+                }
+            });
+            popupMenu.show();
+        }
+
+        private void applyCurrentPlaySpeed() {
+            float speed = getCurrentPlaySpeed();
+            if (speed <= 0f) {
+                return;
+            }
+            if (speed > MAX_VIDEO_SPEED) {
+                speed = MAX_VIDEO_SPEED;
+            }
+            if (shortPlayFragment != null) {
+                shortPlayFragment.setVideoSpeed(speed);
+            }
         }
     }
 
@@ -314,12 +348,12 @@ public class RecommendFragment extends Fragment {
 
                 @Override
                 public void onEnterImmersiveMode() {
-
+                    // no-op: keep required SDK callback implemented without immersive UI logic
                 }
 
                 @Override
                 public void onExitImmersiveMode() {
-
+                    // no-op: keep required SDK callback implemented without immersive UI logic
                 }
 
                 @Override

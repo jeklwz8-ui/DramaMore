@@ -4,16 +4,18 @@ import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.compose.ui.unit.Dp;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
@@ -27,11 +29,13 @@ import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
 import java.util.ArrayList;
+import java.util.List;
 
-/**
- * 切换视频分辨率、剧集等弹窗
- */
 public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
+    private static final int PAGE_INTRO = 0;
+    private static final int PAGE_EPISODE = 1;
+    private static final int EPISODE_PAGE_SIZE = 18;
+
     private final ShortPlay shortPlay;
     private final int currentIndex;
     private final IIndexChooseListener indexChooseListener;
@@ -39,7 +43,7 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
     public IndexChooseDialog(Context context, ShortPlay shortPlay, int currentIndex, IIndexChooseListener indexChooseListener) {
         super(context);
         this.shortPlay = shortPlay;
-        this.currentIndex = currentIndex;
+        this.currentIndex = currentIndex <= 0 ? 1 : currentIndex;
         this.indexChooseListener = indexChooseListener;
     }
 
@@ -52,7 +56,13 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
         WindowManager.LayoutParams attributes = getWindow().getAttributes();
         getWindow().setBackgroundDrawable(null);
         attributes.width = WindowManager.LayoutParams.MATCH_PARENT;
+        attributes.height = WindowManager.LayoutParams.WRAP_CONTENT;
         attributes.gravity = Gravity.BOTTOM;
+        getWindow().setAttributes(attributes);
+
+        int totalEpisodes = shortPlay.total > 0
+                ? shortPlay.total
+                : (shortPlay.episodes == null ? 0 : shortPlay.episodes.size());
 
         ImageView coverIV = findViewById(R.id.iv_cover);
         Glide.with(coverIV).load(shortPlay.coverImage).into(coverIV);
@@ -61,7 +71,7 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
         titleTV.setText(shortPlay.title);
 
         TextView descTV = findViewById(R.id.tv_shortplay_desc);
-        descTV.setText(getContext().getString(R.string.s_finish)+" | " + shortPlay.total + " "+getContext().getString(R.string.s_eps));
+        descTV.setText("\u5df2\u5b8c\u7ed3 \u5171" + totalEpisodes + "\u96c6");
 
         findViewById(R.id.iv_close).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -71,59 +81,17 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
         });
 
         TabLayout tabLayout = findViewById(R.id.tab_layout);
-
         ViewPager2 viewPager2 = findViewById(R.id.view_pager);
-
-        ArrayList<IndexTabData> indexTabDatas = new ArrayList<>();
-        int tabCount = shortPlay.total % 30 == 0 ? shortPlay.total / 30 : shortPlay.total / 30 + 1;
-        for (int i = 0; i < tabCount; i++) {
-            if (i == tabCount - 1) {
-                indexTabDatas.add(new IndexTabData(i * 30 + 1, shortPlay.total));
-            } else {
-                indexTabDatas.add(new IndexTabData(i * 30 + 1, (i + 1) * 30));
-            }
-        }
-
-        IndexTabListAdapter indexTabsAdapter = new IndexTabListAdapter(indexTabDatas, currentIndex, this);
-        viewPager2.setAdapter(indexTabsAdapter);
+        viewPager2.setOffscreenPageLimit(2);
+        viewPager2.setAdapter(new ContentPagerAdapter(shortPlay, totalEpisodes, currentIndex, this));
 
         new TabLayoutMediator(tabLayout, viewPager2, new TabLayoutMediator.TabConfigurationStrategy() {
             @Override
             public void onConfigureTab(@NonNull TabLayout.Tab tab, int position) {
-                TextView textView = new TextView(getContext());
-                IndexTabData tabData = indexTabDatas.get(position);
-                textView.setText(tabData.startIndex + "-" + tabData.endIndex);
-                textView.setTextSize(14);
-                textView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-
-                // 判断是否是第一个 Tab (默认选中项)
-                if (position == 0) {
-                    textView.setTextColor(Color.WHITE);
-                } else {
-                    textView.setTextColor(Color.parseColor("#FF8D8D8D"));
-                }
-
-                tab.setCustomView(textView);
+                tab.setText(position == PAGE_INTRO ? "\u7b80\u4ecb" : "\u9009\u96c6");
             }
         }).attach();
-        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override
-            public void onTabSelected(TabLayout.Tab tab) {
-                TextView textView = (TextView) tab.getCustomView();
-                textView.setTextColor(Color.WHITE);
-            }
-
-            @Override
-            public void onTabUnselected(TabLayout.Tab tab) {
-                TextView textView = (TextView) tab.getCustomView();
-                textView.setTextColor(Color.parseColor("#FF8D8D8D"));
-            }
-
-            @Override
-            public void onTabReselected(TabLayout.Tab tab) {
-
-            }
-        });
+        viewPager2.setCurrentItem(PAGE_EPISODE, false);
     }
 
     @Override
@@ -134,71 +102,180 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
         }
     }
 
-    static class IndexTabData {
-        public int startIndex;
-        public int endIndex;
+    private static class ContentPagerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+        private static final int TYPE_INTRO = 1;
+        private static final int TYPE_EPISODE = 2;
 
-        public IndexTabData(int startIndex, int endIndex) {
-            this.startIndex = startIndex;
-            this.endIndex = endIndex;
-        }
-    }
-
-    private static class IndexTabListAdapter extends RecyclerView.Adapter<IndexTabVH> {
-        private final ArrayList<IndexTabData> indexTabDatas;
+        private final ShortPlay shortPlay;
+        private final int totalEpisodes;
         private final int currentPlayingIndex;
         private final IIndexChooseListener chooseListener;
 
-        public IndexTabListAdapter(ArrayList<IndexTabData> indexTabDatas, int currentPlayingIndex, IIndexChooseListener chooseListener) {
-            this.indexTabDatas = indexTabDatas;
+        ContentPagerAdapter(ShortPlay shortPlay, int totalEpisodes, int currentPlayingIndex, IIndexChooseListener chooseListener) {
+            this.shortPlay = shortPlay;
+            this.totalEpisodes = totalEpisodes;
             this.currentPlayingIndex = currentPlayingIndex;
             this.chooseListener = chooseListener;
         }
 
+        @Override
+        public int getItemViewType(int position) {
+            return position == PAGE_INTRO ? TYPE_INTRO : TYPE_EPISODE;
+        }
+
         @NonNull
         @Override
-        public IndexTabVH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            RecyclerView recyclerView = new RecyclerView(parent.getContext());
-            recyclerView.setLayoutManager(new GridLayoutManager(parent.getContext(), 4));
-            recyclerView.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-            return new IndexTabVH(recyclerView, chooseListener);
+        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            LayoutInflater inflater = LayoutInflater.from(parent.getContext());
+            if (viewType == TYPE_INTRO) {
+                View view = inflater.inflate(R.layout.item_choose_intro_page, parent, false);
+                return new IntroPageVH(view);
+            }
+            View view = inflater.inflate(R.layout.item_choose_episode_page, parent, false);
+            return new EpisodePageVH(view, totalEpisodes, currentPlayingIndex, chooseListener);
         }
 
         @Override
-        public void onBindViewHolder(@NonNull IndexTabVH holder, int position) {
-            holder.bindData(indexTabDatas.get(position), currentPlayingIndex);
+        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            if (holder instanceof IntroPageVH) {
+                ((IntroPageVH) holder).bind(shortPlay.desc);
+            }
         }
 
         @Override
         public int getItemCount() {
-            return indexTabDatas.size();
+            return 2;
         }
     }
 
-    private static class IndexTabVH extends RecyclerView.ViewHolder {
+    private static class IntroPageVH extends RecyclerView.ViewHolder {
+        private final TextView introContentTV;
+
+        IntroPageVH(@NonNull View itemView) {
+            super(itemView);
+            introContentTV = itemView.findViewById(R.id.tv_intro_content);
+        }
+
+        void bind(String content) {
+            if (TextUtils.isEmpty(content)) {
+                introContentTV.setText("\u6682\u65e0\u7b80\u4ecb");
+            } else {
+                introContentTV.setText(content);
+            }
+        }
+    }
+
+    private static class EpisodePageVH extends RecyclerView.ViewHolder {
+        private final LinearLayout pageTabsContainer;
+        private final EpisodeGridAdapter gridAdapter;
+        private final List<EpisodeRange> episodeRanges;
+        private int currentPageIndex;
+
+        EpisodePageVH(@NonNull View itemView, int totalEpisodes, int currentPlayingIndex, IIndexChooseListener onItemClickListener) {
+            super(itemView);
+            pageTabsContainer = itemView.findViewById(R.id.ll_episode_page_tabs);
+            RecyclerView recyclerView = itemView.findViewById(R.id.rv_episode);
+            recyclerView.setLayoutManager(new GridLayoutManager(itemView.getContext(), 4));
+
+            episodeRanges = buildEpisodeRanges(totalEpisodes);
+            currentPageIndex = findPageIndexByEpisode(episodeRanges, currentPlayingIndex);
+            EpisodeRange initialRange = episodeRanges.get(currentPageIndex);
+
+            gridAdapter = new EpisodeGridAdapter(initialRange.start, initialRange.end, currentPlayingIndex, onItemClickListener);
+            recyclerView.setAdapter(gridAdapter);
+
+            renderPageTabs();
+        }
+
+        private void renderPageTabs() {
+            pageTabsContainer.removeAllViews();
+            Context context = itemView.getContext();
+            for (int i = 0; i < episodeRanges.size(); i++) {
+                final int pageIndex = i;
+                EpisodeRange range = episodeRanges.get(i);
+                TextView tabView = new TextView(context);
+                tabView.setText(range.start + "-" + range.end);
+                tabView.setTextSize(14f);
+                tabView.setIncludeFontPadding(false);
+                tabView.setTextColor(pageIndex == currentPageIndex ? Color.WHITE : Color.parseColor("#7FFFFFFF"));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+                if (i > 0) {
+                    lp.leftMargin = DpUtils.dp2px(context, 32);
+                }
+                tabView.setLayoutParams(lp);
+                tabView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (currentPageIndex == pageIndex) {
+                            return;
+                        }
+                        currentPageIndex = pageIndex;
+                        EpisodeRange selectedRange = episodeRanges.get(currentPageIndex);
+                        gridAdapter.updateRange(selectedRange.start, selectedRange.end);
+                        updatePageTabStyles();
+                    }
+                });
+                pageTabsContainer.addView(tabView);
+            }
+            updatePageTabStyles();
+        }
+
+        private void updatePageTabStyles() {
+            for (int i = 0; i < pageTabsContainer.getChildCount(); i++) {
+                View child = pageTabsContainer.getChildAt(i);
+                if (child instanceof TextView) {
+                    ((TextView) child).setTextColor(i == currentPageIndex ? Color.WHITE : Color.parseColor("#7FFFFFFF"));
+                }
+            }
+        }
+
         @NonNull
-        private final RecyclerView recyclerView;
-        private final IIndexChooseListener onItemClickListener;
-
-        public IndexTabVH(@NonNull RecyclerView recyclerView, IIndexChooseListener onItemClickListener) {
-            super(recyclerView);
-            this.recyclerView = recyclerView;
-            this.onItemClickListener = onItemClickListener;
+        private static List<EpisodeRange> buildEpisodeRanges(int totalEpisodes) {
+            int safeTotal = Math.max(totalEpisodes, 1);
+            List<EpisodeRange> ranges = new ArrayList<>();
+            int start = 1;
+            while (start <= safeTotal) {
+                int end = Math.min(start + EPISODE_PAGE_SIZE - 1, safeTotal);
+                ranges.add(new EpisodeRange(start, end));
+                start = end + 1;
+            }
+            return ranges;
         }
 
-        public void bindData(IndexTabData tabData, int currentPlayingIndex) {
-            recyclerView.setAdapter(new IndexListAdapter(tabData, currentPlayingIndex, onItemClickListener));
+        private static int findPageIndexByEpisode(@NonNull List<EpisodeRange> ranges, int episode) {
+            int target = episode <= 0 ? 1 : episode;
+            for (int i = 0; i < ranges.size(); i++) {
+                EpisodeRange range = ranges.get(i);
+                if (target >= range.start && target <= range.end) {
+                    return i;
+                }
+            }
+            return 0;
         }
     }
 
-    private static class IndexListAdapter extends RecyclerView.Adapter<IndexItemVH> {
+    private static class EpisodeRange {
+        final int start;
+        final int end;
 
-        private final IndexTabData indexTabData;
+        EpisodeRange(int start, int end) {
+            this.start = start;
+            this.end = end;
+        }
+    }
+
+    private static class EpisodeGridAdapter extends RecyclerView.Adapter<IndexItemVH> {
+        private int startEpisode;
+        private int endEpisode;
         private final int currentIndex;
         private final IIndexChooseListener onItemClickListener;
 
-        public IndexListAdapter(IndexTabData indexTabData, int currentIndex, IIndexChooseListener onItemClickListener) {
-            this.indexTabData = indexTabData;
+        EpisodeGridAdapter(int startEpisode, int endEpisode, int currentIndex, IIndexChooseListener onItemClickListener) {
+            this.startEpisode = startEpisode;
+            this.endEpisode = endEpisode;
             this.currentIndex = currentIndex;
             this.onItemClickListener = onItemClickListener;
         }
@@ -212,27 +289,32 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
 
         @Override
         public void onBindViewHolder(@NonNull IndexItemVH holder, int position) {
-            holder.bindData(indexTabData.startIndex + position, currentIndex);
+            holder.bindData(startEpisode + position, currentIndex);
         }
 
         @Override
         public int getItemCount() {
-            return indexTabData.endIndex - indexTabData.startIndex + 1;
+            return Math.max(endEpisode - startEpisode + 1, 0);
+        }
+
+        void updateRange(int startEpisode, int endEpisode) {
+            this.startEpisode = startEpisode;
+            this.endEpisode = endEpisode;
+            notifyDataSetChanged();
         }
     }
 
     private static class IndexItemVH extends RecyclerView.ViewHolder implements View.OnClickListener {
-
         private final TextView tvContent;
         private final IIndexChooseListener onItemClickListener;
         private final ImageView statusView;
         private int index;
 
-        public IndexItemVH(@NonNull View itemView, IIndexChooseListener onItemClickListener) {
+        IndexItemVH(@NonNull View itemView, IIndexChooseListener onItemClickListener) {
             super(itemView);
             tvContent = new TextView(itemView.getContext());
             tvContent.setGravity(Gravity.CENTER);
-            tvContent.setTextColor(Color.WHITE);
+            tvContent.setTextColor(0xFFFFFFFF);
             tvContent.setPadding(0, 40, 0, 40);
             tvContent.setBackground(itemView.getResources().getDrawable(R.drawable.bg_index_round));
             FrameLayout.LayoutParams contentLP = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -248,22 +330,22 @@ public class IndexChooseDialog extends Dialog implements IIndexChooseListener {
             statusView.setImageResource(R.drawable.ic_status);
             ((FrameLayout) itemView).addView(statusView, statusLP);
 
-
             this.onItemClickListener = onItemClickListener;
             itemView.setOnClickListener(this);
-
         }
 
-        public void bindData(int index, int currentIndex) {
+        void bindData(int index, int currentIndex) {
             this.index = index;
-            tvContent.setText("" + index);
+            tvContent.setText(String.valueOf(index));
             tvContent.setSelected(index == currentIndex);
             statusView.setVisibility(index == currentIndex ? View.VISIBLE : View.GONE);
         }
 
         @Override
         public void onClick(View v) {
-            onItemClickListener.onChooseIndex(this.index);
+            if (onItemClickListener != null) {
+                onItemClickListener.onChooseIndex(this.index);
+            }
         }
     }
 }

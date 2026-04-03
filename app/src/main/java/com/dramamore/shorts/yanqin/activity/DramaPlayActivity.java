@@ -25,6 +25,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
@@ -78,6 +79,7 @@ import com.ss.ttvideoengine.Resolution;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 
 public class DramaPlayActivity extends AppFragmentActivity implements IIndexChooseListener {
@@ -85,12 +87,15 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private static final String EXTRA_SHORT_PLAY = "short_play";
     private static final String EXTRA_SHORT_PLAY_INDEX = "short_play_index";
     private static final String EXTRA_SHORT_PLAY_FROM_SECONDS = "seconds";
-    private static final int REQUEST_CODE_CHOOSE_RESOLUTION = 1;
-    private static final int REQUEST_CODE_CHOOSE_INDEX = 2;
-    private static final int FIXED_BOTTOM_BAR_HEIGHT_DP = 36;
-    private static final int FIXED_BOTTOM_BAR_MARGIN_DP = 33;
-    private static final float[] PLAY_SPEEDS = new float[]{1.0f, 1.25f, 1.5f, 2.0f};
-    private static final String[] PLAY_SPEED_LABELS = new String[]{"1.0x", "1.25x", "1.5x", "2.0x"};
+    private static final int REQUEST_CODE_CHOOSE_RESOLUTION = 1; // 选择分辨率
+    private static final int REQUEST_CODE_CHOOSE_INDEX = 2; // 选择索引
+    private static final int FIXED_BOTTOM_BAR_HEIGHT_DP = 25; // 底部固定栏高度
+    private static final int FIXED_BOTTOM_BAR_SCREEN_GAP_DP = 8; // 底部固定栏与屏幕的间距
+    private static final int PROGRESS_TO_CHOOSE_GAP_DP = 5; // 进度条与选择条的间距
+    private static final int BRIEF_TO_PROGRESS_GAP_DP = 8; //简介与进度条的间距
+    private static final float MAX_VIDEO_SPEED = 3.0f; // 最大视频速度
+    private static final float[] PLAY_SPEEDS = new float[]{1.0f, 1.5f, 2.0f};
+    private static final String[] PLAY_SPEED_LABELS = new String[]{"1.0X", "1.5X", "2.0X"};
     private final List<PAGNativeAd> feedAds = new ArrayList<>();
     /**
      * 宸茶В閿佺殑鍓ч泦
@@ -107,10 +112,13 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private View bottomDefaultView;
     private TextView bottomChooseIndexTitleView;
     private View fixedChooseIndexView;
+    private CustomOverlayView customOverlayView;
     private Resolution[] resolutions;
     private Resolution currentResolution;
     private boolean hasShowRetainDialog;
     private boolean hasShowUnlockMoreDialog;
+    private boolean isInImmersiveMode;
+    private int lastBottomInset;
     private Runnable taskWhenResume;
     private int currentPlaySpeedIndex = 0;
 
@@ -169,21 +177,17 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             }
         });
 
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.play), (v, insets) -> {
+        View playRoot = findViewById(R.id.play);
+        ViewCompat.setOnApplyWindowInsetsListener(playRoot, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
-            int bottomInset = systemBars.bottom;
-
-            FrameLayout.LayoutParams fixedBarParams = (FrameLayout.LayoutParams) fixedChooseIndexView.getLayoutParams();
-            fixedBarParams.bottomMargin = bottomInset;
-            fixedChooseIndexView.setLayoutParams(fixedBarParams);
-
-            View fragmentContainer = findViewById(R.id.fragment_container);
-            FrameLayout.LayoutParams fragmentParams = (FrameLayout.LayoutParams) fragmentContainer.getLayoutParams();
-            fragmentParams.bottomMargin = DpUtils.dp2px(DramaPlayActivity.this, FIXED_BOTTOM_BAR_MARGIN_DP);
-            fragmentContainer.setLayoutParams(fragmentParams);
+            lastBottomInset = systemBars.bottom;
+            applyBottomBarsLayout(lastBottomInset);
             return insets;
         });
+        ViewCompat.requestApplyInsets(playRoot);
+        // Fallback for devices/skins where insets callback may be delayed.
+        playRoot.post(() -> applyBottomBarsLayout(0));
 
         // 棰勫姞杞戒俊鎭祦骞垮憡
         App.ensurePangleAdsSdkInit(getApplicationContext(), () -> {
@@ -319,6 +323,9 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             public void onShortPlayPlayed(ShortPlay shortPlay, int index, EpisodeData episodeData) {
                 // 姣忎竴闆嗗紑濮嬫挱鏀炬椂鍥炶皟锛屽彲鐢ㄦ潵璁板綍鎾斁鍘嗗彶
                 Logs.i(TAG, "onShortPlayPlayed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
+                if (bottomChooseIndexTitleView != null) {
+                    bottomChooseIndexTitleView.setText(buildChooseIndexTitle(shortPlay, index));
+                }
 
                 if (shortPlay.isCollected) {//宸叉敹钘忓垯鏇存柊鍝竴闆?
                     ShortUtils.followInsertOrDelete(DramaPlayActivity.this, true, shortPlay, index);
@@ -361,12 +368,14 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             public void onEnterImmersiveMode() {
                 // 杩涘叆娌夋蹈寮忔ā寮?
                 Logs.i(TAG, "onEnterImmersiveMode() called");
+                updateImmersiveModeUi(true);
             }
 
             @Override
             public void onExitImmersiveMode() {
                 // 閫€鍑烘矇娴稿紡妯″紡
                 Logs.i(TAG, "onExitImmersiveMode() called");
+                updateImmersiveModeUi(false);
             }
 
             @Override
@@ -394,7 +403,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 currentResolution = videoPlayInfo.currentResolution;
 
                 if (resolutionChangeListener != null) {
-                    resolutionChangeListener.onResolutionChanged(currentResolution.toString());
+                    resolutionChangeListener.onResolutionChanged(getResolutionLabel(currentResolution));
                 }
                 applyCurrentPlaySpeed();
                 Logs.i(TAG, "onVideoInfoFetched: currentResolution=" + currentResolution);
@@ -460,22 +469,15 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 views.add(errorView);
 
                 // 鑷畾涔夎繘搴︽潯
-                CustomProgressBar customProgressBar = new CustomProgressBar(getApplicationContext());
-                FrameLayout.LayoutParams lpProgressBar = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-                lpProgressBar.gravity = Gravity.BOTTOM;
-                lpProgressBar.leftMargin=DpUtils.dp2px(getApplicationContext(), 20);
-                lpProgressBar.rightMargin=DpUtils.dp2px(getApplicationContext(), 20);
-                lpProgressBar.bottomMargin = DpUtils.dp2px(getApplicationContext(), 60);
-                customProgressBar.setLayoutParams(lpProgressBar);
-                views.add(customProgressBar);
-
-                CustomOverlayView customOverlayView = new CustomOverlayView(getApplicationContext());
+                customOverlayView = new CustomOverlayView(getApplicationContext());
                 params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
                 params.bottomMargin = 0;
                 customOverlayView.setLayoutParams(params);
+                customOverlayView.setImmersiveMode(isInImmersiveMode);
                 progressChangeListener = customOverlayView;
                 resolutionChangeListener = customOverlayView;
                 views.add(customOverlayView);
+                applyBottomBarsLayout(lastBottomInset);
                 return views;
             }
         });
@@ -753,22 +755,97 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     }
 
     private float getCurrentPlaySpeed() {
-        return PLAY_SPEEDS[currentPlaySpeedIndex];
+        return PLAY_SPEEDS[getCurrentPlaySpeedIndex()];
     }
 
     private String getCurrentPlaySpeedLabel() {
-        return PLAY_SPEED_LABELS[currentPlaySpeedIndex];
+        return PLAY_SPEED_LABELS[getCurrentPlaySpeedIndex()];
     }
 
-    private void cyclePlaySpeed() {
-        currentPlaySpeedIndex = (currentPlaySpeedIndex + 1) % PLAY_SPEEDS.length;
-        applyCurrentPlaySpeed();
+    private int getCurrentPlaySpeedIndex() {
+        if (currentPlaySpeedIndex < 0 || currentPlaySpeedIndex >= PLAY_SPEEDS.length) {
+            currentPlaySpeedIndex = 0;
+        }
+        return currentPlaySpeedIndex;
+    }
+
+    private String getResolutionLabel(@Nullable Resolution resolution) {
+        if (resolution == null) {
+            return "";
+        }
+        return resolution.toString().toUpperCase(Locale.US);
+    }
+
+    private String getResolutionButtonText(@Nullable Resolution resolution) {
+        String resolutionLabel = getResolutionLabel(resolution);
+        if (TextUtils.isEmpty(resolutionLabel)) {
+            return "HD 1080P";
+        }
+        if (resolutionLabel.contains("1080") || resolutionLabel.contains("720")) {
+            return "HD " + resolutionLabel;
+        }
+        return resolutionLabel;
+    }
+
+    private String buildChooseIndexTitle(@NonNull ShortPlay shortPlay, int index) {
+        int currentEpisode = index <= 0 ? 1 : index;
+        int totalEpisodes = shortPlay.total > 0 ? shortPlay.total : (shortPlay.episodes == null ? 0 : shortPlay.episodes.size());
+        if (totalEpisodes <= 0) {
+            return "\u9009\u96c6";
+        }
+        if (currentEpisode > totalEpisodes) {
+            currentEpisode = totalEpisodes;
+        }
+        return "\u9009\u96c6 \u00b7 \u7b2c" + currentEpisode + "\u96c6 \u00b7 \u5168" + totalEpisodes + "\u96c6";
     }
 
     private void applyCurrentPlaySpeed() {
-        if (detailFragment != null) {
-            detailFragment.setVideoSpeed(getCurrentPlaySpeed());
+        float speed = getCurrentPlaySpeed();
+        if (speed <= 0f) {
+            return;
         }
+        if (speed > MAX_VIDEO_SPEED) {
+            speed = MAX_VIDEO_SPEED;
+        }
+        if (detailFragment != null) {
+            detailFragment.setVideoSpeed(speed);
+        }
+    }
+
+    private void applyBottomBarsLayout(int bottomInset) {
+        if (fixedChooseIndexView == null) {
+            return;
+        }
+        int fixedBottomGapPx = DpUtils.dp2px(this, FIXED_BOTTOM_BAR_SCREEN_GAP_DP);
+        int fixedBarBottomMarginPx = bottomInset + fixedBottomGapPx;
+        int fixedBarHeightPx = DpUtils.dp2px(this, FIXED_BOTTOM_BAR_HEIGHT_DP);
+        // SDK overlay may already include system insets internally.
+        // Keep overlay controls relative to choose-bar height only, avoid double insets.
+        int progressBottomMarginPx = fixedBarHeightPx + DpUtils.dp2px(this, PROGRESS_TO_CHOOSE_GAP_DP);
+        int briefBottomMarginPx = progressBottomMarginPx + DpUtils.dp2px(this, BRIEF_TO_PROGRESS_GAP_DP);
+
+        FrameLayout.LayoutParams fixedBarParams = (FrameLayout.LayoutParams) fixedChooseIndexView.getLayoutParams();
+        fixedBarParams.bottomMargin = fixedBarBottomMarginPx;
+        fixedChooseIndexView.setLayoutParams(fixedBarParams);
+
+        if (customOverlayView != null) {
+            customOverlayView.updateBottomLayout(briefBottomMarginPx, progressBottomMarginPx);
+        }
+    }
+
+    private void updateImmersiveModeUi(boolean immersiveMode) {
+        isInImmersiveMode = immersiveMode;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (fixedChooseIndexView != null) {
+                    fixedChooseIndexView.setVisibility(immersiveMode ? View.GONE : View.VISIBLE);
+                }
+                if (customOverlayView != null) {
+                    customOverlayView.setImmersiveMode(immersiveMode);
+                }
+            }
+        });
     }
 
     @Override
@@ -910,7 +987,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             super(context);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                setMaxHeight(DpUtils.dp2px(context, 4));
+                setMaxHeight(DpUtils.dp2px(context, 2));
             }
             setPadding(DpUtils.dp2px(context,4),0,DpUtils.dp2px(context,4),0);
             setThumb(getResources().getDrawable(R.drawable.custom_thumb, null));
@@ -1420,15 +1497,26 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
     }
 
-    private class CustomOverlayView extends FrameLayout implements PSSDK.IControlView, DramaPlayActivity.ProgressChangeListener, ResolutionChangeListener {
+        private class CustomOverlayView extends FrameLayout implements PSSDK.IControlView, DramaPlayActivity.ProgressChangeListener, ResolutionChangeListener {
 
-        private final View chooseIndexLayout;
-        private final TextView chooseIndexTitleTV;
+        private final View briefLayout;
         private final TextView dramaTitleTV;
         private final ImageView dramaCoverIV;
         private final TextView speedTV;
         private final TextView resolutionTV;
+        private final View speedResolutionMenuLayout;
+        private final LinearLayout speedMenuPanel;
+        private final LinearLayout resolutionMenuPanel;
         private final SeekBar progressBar;
+        private final int speedResolutionNormalTextColor = Color.parseColor("#CCFFFFFF");
+        private final int speedResolutionActiveTextColor = Color.parseColor("#FFF84E40");
+        private int speedButtonDefaultTextColor;
+        private int resolutionButtonDefaultTextColor;
+        private static final int MENU_TYPE_NONE = 0;
+        private static final int MENU_TYPE_SPEED = 1;
+        private static final int MENU_TYPE_RESOLUTION = 2;
+        private int currentExpandedMenuType = MENU_TYPE_NONE;
+        private boolean isImmersiveMode;
 //        private final TextView tvResolution;
 //        private final ImageView ivHd;
 
@@ -1436,29 +1524,41 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             super(context);
             inflate(context, R.layout.player_overlay, this);
 
-            chooseIndexLayout = findViewById(R.id.ll_choose_index);
-            chooseIndexTitleTV = findViewById(R.id.tv_overlay_choose_index_title);
-            chooseIndexLayout.setVisibility(GONE);
+            briefLayout = findViewById(R.id.ll_overlay_brief);
 
             dramaTitleTV = findViewById(R.id.tv_overlay_drama_name);
             dramaCoverIV = findViewById(R.id.iv_overlay_cover);
             speedTV = findViewById(R.id.tv_speed);
+            speedButtonDefaultTextColor = speedTV.getCurrentTextColor();
             speedTV.setText(getCurrentPlaySpeedLabel());
             speedTV.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    cyclePlaySpeed();
-                    speedTV.setText(getCurrentPlaySpeedLabel());
+                    toggleSpeedResolutionMenu(MENU_TYPE_SPEED, speedTV);
                 }
             });
 
             resolutionTV = findViewById(R.id.tv_resolution);
+            resolutionButtonDefaultTextColor = resolutionTV.getCurrentTextColor();
+            resolutionTV.setText(getResolutionButtonText(currentResolution));
             resolutionTV.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    showChooseResolutionDialog();
+                    toggleSpeedResolutionMenu(MENU_TYPE_RESOLUTION, resolutionTV);
                 }
             });
+
+            speedResolutionMenuLayout = findViewById(R.id.ll_speed_resolution_menu);
+            speedMenuPanel = findViewById(R.id.ll_speed_menu_panel);
+            resolutionMenuPanel = findViewById(R.id.ll_resolution_menu_panel);
+            speedResolutionMenuLayout.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    setExpandedMenuType(MENU_TYPE_NONE);
+                }
+            });
+            refreshSpeedMenuItems();
+            refreshResolutionMenuItems();
 
             /*ivHd = findViewById(R.id.iv_hd);
             tvResolution = findViewById(R.id.tv_resolution);
@@ -1470,6 +1570,10 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             });*/
 
             progressBar = findViewById(R.id.sb_overlay);
+            Drawable progressDrawable = ContextCompat.getDrawable(getContext(), R.drawable.custom_seekbar_track);
+            if (progressDrawable != null) {
+                progressBar.setProgressDrawable(progressDrawable);
+            }
             progressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 
                 @Override
@@ -1498,8 +1602,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         @Override
         public void bindItemData(ShortPlayFragment shortPlayFragment, ShortPlay shortPlay, int index) {
-            String chooseIndexTitle = shortPlay.total + getString(R.string.s_eps) + " - " + shortPlay.title;
-            chooseIndexTitleTV.setText(chooseIndexTitle);
+            String chooseIndexTitle = buildChooseIndexTitle(shortPlay, index);
             if (bottomChooseIndexTitleView != null) {
                 bottomChooseIndexTitleView.setText(chooseIndexTitle);
             }
@@ -1508,9 +1611,11 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                     .load(shortPlay.coverImage)
                     .into(dramaCoverIV);
             speedTV.setText(getCurrentPlaySpeedLabel());
-            if (currentResolution != null) {
-                resolutionTV.setText(currentResolution.toString());
-            }
+            resolutionTV.setText(getResolutionButtonText(currentResolution));
+            refreshResolutionMenuItems();
+            refreshSpeedMenuItems();
+            setExpandedMenuType(MENU_TYPE_NONE);
+            applyImmersiveModeVisibility();
         }
 
         @Override
@@ -1525,10 +1630,170 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         @Override
         public void onResolutionChanged(String resoluton) {
             Logs.i(TAG, "onResolutionChanged-resoluton=" + resoluton);
-            String resolutionString = currentResolution.toString();
-            resolutionTV.setText(resolutionString);
+            resolutionTV.setText(getResolutionButtonText(currentResolution));
+            refreshResolutionMenuItems();
 //            tvResolution.setText(resolutionString);
 //            ivHd.setVisibility(resolutionString.contains("1080") ? View.VISIBLE : View.GONE);
+        }
+
+        void setImmersiveMode(boolean immersiveMode) {
+            isImmersiveMode = immersiveMode;
+            if (immersiveMode) {
+                setExpandedMenuType(MENU_TYPE_NONE);
+            }
+            applyImmersiveModeVisibility();
+        }
+
+        private void applyImmersiveModeVisibility() {
+            int visibility = isImmersiveMode ? View.GONE : View.VISIBLE;
+            speedTV.setVisibility(visibility);
+            resolutionTV.setVisibility(visibility);
+            briefLayout.setVisibility(visibility);
+        }
+
+        void updateBottomLayout(int briefBottomMarginPx, int progressBottomMarginPx) {
+            FrameLayout.LayoutParams briefParams = (FrameLayout.LayoutParams) briefLayout.getLayoutParams();
+            if (briefParams.bottomMargin != briefBottomMarginPx) {
+                briefParams.bottomMargin = briefBottomMarginPx;
+                briefLayout.setLayoutParams(briefParams);
+            }
+            FrameLayout.LayoutParams progressParams = (FrameLayout.LayoutParams) progressBar.getLayoutParams();
+            if (progressParams.bottomMargin != progressBottomMarginPx) {
+                progressParams.bottomMargin = progressBottomMarginPx;
+                progressBar.setLayoutParams(progressParams);
+            }
+        }
+
+        private void toggleSpeedResolutionMenu(int menuType, @NonNull View anchorView) {
+            if (isImmersiveMode) {
+                return;
+            }
+            if (currentExpandedMenuType == menuType) {
+                setExpandedMenuType(MENU_TYPE_NONE);
+                return;
+            }
+            if (menuType == MENU_TYPE_SPEED) {
+                refreshSpeedMenuItems();
+            } else if (menuType == MENU_TYPE_RESOLUTION) {
+                refreshResolutionMenuItems();
+            }
+            setExpandedMenuType(menuType);
+            speedResolutionMenuLayout.post(new Runnable() {
+                @Override
+                public void run() {
+                    updateMenuPosition(anchorView);
+                }
+            });
+        }
+
+        private void updateMenuPosition(@NonNull View anchorView) {
+            View parentView = (View) speedResolutionMenuLayout.getParent();
+            if (parentView == null) {
+                return;
+            }
+            FrameLayout.LayoutParams menuLayoutParams = (FrameLayout.LayoutParams) speedResolutionMenuLayout.getLayoutParams();
+            menuLayoutParams.gravity = Gravity.TOP | Gravity.RIGHT;
+            int menuWidth = speedResolutionMenuLayout.getWidth();
+            if (menuWidth <= 0) {
+                menuWidth = speedResolutionMenuLayout.getMeasuredWidth();
+            }
+            if (menuWidth <= 0) {
+                menuWidth = DpUtils.dp2px(getContext(), currentExpandedMenuType == MENU_TYPE_SPEED ? 56 : 70);
+            }
+            int anchorCenterX = anchorView.getLeft() + anchorView.getWidth() / 2;
+            int desiredMenuLeft = anchorCenterX - menuWidth / 2;
+            int maxLeft = Math.max(0, parentView.getWidth() - menuWidth);
+            int clampedLeft = Math.max(0, Math.min(desiredMenuLeft, maxLeft));
+            menuLayoutParams.topMargin = anchorView.getBottom() + DpUtils.dp2px(getContext(), 6);
+            menuLayoutParams.rightMargin = Math.max(0, parentView.getWidth() - (clampedLeft + menuWidth));
+            speedResolutionMenuLayout.setLayoutParams(menuLayoutParams);
+        }
+
+        private void setExpandedMenuType(int menuType) {
+            currentExpandedMenuType = menuType;
+            speedResolutionMenuLayout.setVisibility(menuType == MENU_TYPE_NONE ? View.GONE : View.VISIBLE);
+            speedMenuPanel.setVisibility(menuType == MENU_TYPE_SPEED ? View.VISIBLE : View.GONE);
+            resolutionMenuPanel.setVisibility(menuType == MENU_TYPE_RESOLUTION ? View.VISIBLE : View.GONE);
+            speedTV.setSelected(menuType == MENU_TYPE_SPEED);
+            resolutionTV.setSelected(menuType == MENU_TYPE_RESOLUTION);
+
+            speedTV.setTextColor(menuType == MENU_TYPE_SPEED ? speedResolutionActiveTextColor : speedButtonDefaultTextColor);
+            resolutionTV.setTextColor(menuType == MENU_TYPE_RESOLUTION ? speedResolutionActiveTextColor : resolutionButtonDefaultTextColor);
+        }
+
+        private void refreshSpeedMenuItems() {
+            speedMenuPanel.removeAllViews();
+            for (int i = 0; i < PLAY_SPEED_LABELS.length; i++) {
+                final int speedIndex = i;
+                TextView itemView = createMenuItemView(PLAY_SPEED_LABELS[i], i == getCurrentPlaySpeedIndex());
+                itemView.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        currentPlaySpeedIndex = speedIndex;
+                        applyCurrentPlaySpeed();
+                        speedTV.setText(getCurrentPlaySpeedLabel());
+                        refreshSpeedMenuItems();
+                        setExpandedMenuType(MENU_TYPE_NONE);
+                    }
+                });
+                speedMenuPanel.addView(itemView);
+            }
+        }
+
+        private void refreshResolutionMenuItems() {
+            resolutionMenuPanel.removeAllViews();
+            List<Resolution> availableResolutions = new ArrayList<>();
+            if (resolutions != null) {
+                for (Resolution resolution : resolutions) {
+                    if (resolution != null) {
+                        availableResolutions.add(resolution);
+                    }
+                }
+            }
+            if (availableResolutions.isEmpty() && currentResolution != null) {
+                availableResolutions.add(currentResolution);
+            }
+            if (availableResolutions.isEmpty()) {
+                TextView emptyView = createMenuItemView("AUTO", false);
+                emptyView.setClickable(false);
+                emptyView.setTextColor(speedResolutionNormalTextColor);
+                resolutionMenuPanel.addView(emptyView);
+                return;
+            }
+            for (Resolution resolution : availableResolutions) {
+                final Resolution selectedResolution = resolution;
+                String resolutionLabel = getResolutionLabel(resolution);
+                boolean isSelected = resolutionLabel.equals(getResolutionLabel(currentResolution));
+                TextView itemView = createMenuItemView(resolutionLabel, isSelected);
+                itemView.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        currentResolution = selectedResolution;
+                        if (detailFragment != null) {
+                            detailFragment.setResolution(selectedResolution);
+                        }
+                        resolutionTV.setText(getResolutionButtonText(selectedResolution));
+                        refreshResolutionMenuItems();
+                        setExpandedMenuType(MENU_TYPE_NONE);
+                    }
+                });
+                resolutionMenuPanel.addView(itemView);
+            }
+        }
+
+        private TextView createMenuItemView(String text, boolean isSelected) {
+            TextView textView = new TextView(getContext());
+            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+                    LayoutParams.MATCH_PARENT,
+                    DpUtils.dp2px(getContext(), 28)
+            );
+            textView.setLayoutParams(layoutParams);
+            textView.setGravity(Gravity.CENTER);
+            textView.setText(text);
+            textView.setTextSize(12f);
+            textView.setTextColor(isSelected ? speedResolutionActiveTextColor : speedResolutionNormalTextColor);
+            textView.setBackgroundColor(isSelected ? Color.parseColor("#40FFFFFF") : Color.TRANSPARENT);
+            return textView;
         }
     }
 }

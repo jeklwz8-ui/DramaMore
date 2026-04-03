@@ -13,40 +13,32 @@
     <LinearLayout
         android:id="@+id/ll_choose_index_fixed"
         android:layout_width="match_parent"
-        android:layout_height="36dp"
+        android:layout_height="32dp"
         android:layout_gravity="bottom"
-        android:layout_marginLeft="8dp"
-        android:layout_marginRight="8dp"
-        android:layout_marginBottom="4dp"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginBottom="0dp"
         android:background="@drawable/bg_black_round_2dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp">
-
-        <ImageView
-            android:layout_width="16dp"
-            android:layout_height="16dp"
-            android:layout_marginRight="8dp"
-            android:src="@drawable/choose_index" />
+        android:paddingLeft="12dp"
+        android:paddingRight="12dp">
 
         <TextView
             android:id="@+id/tv_choose_index_title_fixed"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:alpha="0.8"
-            android:text="45 Eps XXX"
+            android:alpha="0.95"
             android:textColor="@android:color/white"
             android:textSize="12sp" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:alpha="0.8"
-            android:text="@string/s_select"
-            android:textColor="@android:color/white"
-            android:textSize="12sp" />
+        <ImageView
+            android:layout_width="14dp"
+            android:layout_height="8dp"
+            android:rotation="180"
+            android:src="@drawable/arrow_down"
+            android:tint="#CCFFFFFF" />
     </LinearLayout>
 
 </FrameLayout>

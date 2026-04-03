@@ -4,90 +4,97 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <RelativeLayout
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="460dp"
         android:layout_gravity="bottom"
-        android:background="@drawable/bg_dg_index_top_round">
+        android:background="@drawable/bg_dg_index_top_round"
+        android:orientation="vertical"
+        android:paddingLeft="16dp"
+        android:paddingTop="16dp"
+        android:paddingRight="16dp"
+        android:paddingBottom="16dp">
 
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="72dp">
 
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cv_cover"
-            android:layout_width="61dp"
-            android:layout_height="82dp"
-            android:layout_alignParentLeft="true"
-            android:layout_alignParentTop="true"
-            android:layout_marginLeft="16dp"
-            android:layout_marginTop="16dp"
-            app:cardCornerRadius="8dp">
+            <androidx.cardview.widget.CardView
+                android:id="@+id/cv_cover"
+                android:layout_width="44dp"
+                android:layout_height="60dp"
+                android:layout_alignParentLeft="true"
+                android:layout_centerVertical="true"
+                app:cardCornerRadius="4dp">
+
+                <ImageView
+                    android:id="@+id/iv_cover"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop" />
+            </androidx.cardview.widget.CardView>
+
+            <TextView
+                android:id="@+id/tv_shortplay_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="10dp"
+                android:layout_toRightOf="@id/cv_cover"
+                android:layout_alignTop="@id/cv_cover"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_shortplay_desc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="10dp"
+                android:layout_marginTop="6dp"
+                android:layout_toRightOf="@id/cv_cover"
+                android:layout_below="@id/tv_shortplay_title"
+                android:textColor="#FF8D8D8D"
+                android:textSize="12sp" />
 
             <ImageView
-                android:id="@+id/iv_cover"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop" />
-        </androidx.cardview.widget.CardView>
-
-        <TextView
-            android:id="@+id/tv_shortplay_desc"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignBottom="@id/cv_cover"
-            android:layout_marginLeft="7dp"
-            android:layout_toRightOf="@id/cv_cover"
-            android:textColor="#FF8D8D8D"
-            android:textSize="14sp" />
-
-        <TextView
-            android:id="@+id/tv_shortplay_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_above="@id/tv_shortplay_desc"
-            android:layout_alignLeft="@id/tv_shortplay_desc"
-            android:layout_marginBottom="20dp"
-            android:ellipsize="end"
-            android:textStyle="bold"
-            android:maxLines="1"
-            android:textColor="#fff"
-            android:textSize="18sp" />
-
-        <View
-            android:id="@+id/view_divider"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_below="@id/cv_cover"
-            android:layout_marginTop="15dp"
-            android:layout_marginBottom="15dp"
-            android:alpha="0.1"
-            android:background="#192734" />
+                android:id="@+id/iv_close"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_alignParentRight="true"
+                android:layout_marginTop="2dp"
+                android:rotation="-90"
+                android:src="@drawable/ic_back"
+                android:tint="#99FFFFFF" />
+        </RelativeLayout>
 
         <com.google.android.material.tabs.TabLayout
             android:id="@+id/tab_layout"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/view_divider"
-            app:tabIndicatorHeight="0dp"
-            app:tabMode="fixed" />
+            android:layout_height="38dp"
+            android:layout_marginTop="8dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            app:tabContentStart="0dp"
+            app:tabGravity="start"
+            app:tabIndicatorColor="#FFF84E40"
+            app:tabIndicatorFullWidth="false"
+            app:tabIndicatorHeight="2dp"
+            app:tabMinWidth="0dp"
+            app:tabMode="scrollable"
+            app:tabPaddingStart="8dp"
+            app:tabPaddingEnd="8dp"
+            app:tabRippleColor="@android:color/transparent"
+            app:tabSelectedTextColor="@android:color/white"
+            app:tabTextColor="#99FFFFFF" />
 
         <androidx.viewpager2.widget.ViewPager2
             android:id="@+id/view_pager"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@id/tab_layout"
-            android:paddingLeft="16dp"
-            android:paddingRight="16dp"
-            android:paddingBottom="16dp" />
-
-        <ImageView
-            android:id="@+id/iv_close"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:layout_alignParentRight="true"
-            android:layout_marginTop="18dp"
-            android:layout_marginRight="18dp"
-            android:rotation="-90"
-            android:src="@drawable/ic_back" />
-
-    </RelativeLayout>
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:overScrollMode="never"
+            android:paddingTop="8dp" />
+    </LinearLayout>
 </FrameLayout>

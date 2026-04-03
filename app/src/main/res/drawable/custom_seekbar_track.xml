@@ -4,17 +4,18 @@
     <!-- 背景轨道 -->
     <item android:id="@android:id/background">
         <shape>
-            <corners android:radius="3dp" />
-            <solid android:color="#4DFFFFFF" />
-            <size android:height="3dp" />
+            <corners android:radius="1dp" />
+            <solid android:color="#CCFFFFFF" />
+            <size android:height="2dp" />
         </shape>
     </item>
     <!-- 进度条（必须包含 clip 标签，否则进度无法动态显示） -->
     <item android:id="@android:id/progress">
         <clip>
             <shape>
-                <corners android:radius="3dp" />
+                <corners android:radius="1dp" />
                 <solid android:color="#FFF84E40" />
+                <size android:height="2dp" />
             </shape>
         </clip>
     </item>

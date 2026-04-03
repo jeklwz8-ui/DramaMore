@@ -73,6 +73,8 @@ public class BannerAdapter extends RecyclerView.Adapter<BannerAdapter.ViewHolder
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
+        imageView.setFocusable(false);
+        imageView.setFocusableInTouchMode(false);
 
         imageView.setScaleType(ImageView.ScaleType.FIT_XY);
 

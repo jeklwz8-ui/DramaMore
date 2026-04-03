@@ -3,6 +3,7 @@ package com.dramamore.shorts.yanqin.banner;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -44,6 +45,10 @@ public class BannerManager {
 
         adapter = new BannerAdapter(pager.getContext(), images);
         viewPager.setAdapter(adapter);
+        // Prevent banner page changes from stealing focus and dragging the parent list to top.
+        viewPager.setFocusable(false);
+        viewPager.setFocusableInTouchMode(false);
+        viewPager.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
 
         int start = Integer.MAX_VALUE / 2;
         if (!images.isEmpty()) {
@@ -167,7 +172,8 @@ public class BannerManager {
             public void run() {
                 Logs.i(TAG, "startAutoScroll-WindowVisibility=" + viewPager.getWindowVisibility());
                 if (viewPager.getWindowVisibility() == View.VISIBLE) {
-                    viewPager.setCurrentItem(viewPager.getCurrentItem() + 1);
+                    // Use no smooth-scroll to avoid nested scrolling side-effects in home RecyclerView.
+                    viewPager.setCurrentItem(viewPager.getCurrentItem() + 1, false);
                 }
                 handler.postDelayed(this, 3000);
             }

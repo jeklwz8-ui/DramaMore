@@ -74,6 +74,7 @@ import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
 import com.dramamore.shorts.yanqin.utils.PlayHistoryHelper;
 import com.dramamore.shorts.yanqin.utils.ShortUtils;
+import com.dramamore.shorts.yanqin.utils.VoiceModeHelper;
 import com.google.gson.Gson;
 import com.ss.ttvideoengine.Resolution;
 
@@ -1521,6 +1522,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         private final View briefLayout;
         private final TextView dramaTitleTV;
+        private final TextView voiceModeTV;
         private final ImageView dramaCoverIV;
         private final TextView speedTV;
         private final TextView resolutionTV;
@@ -1537,6 +1539,8 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         private static final int MENU_TYPE_RESOLUTION = 2;
         private int currentExpandedMenuType = MENU_TYPE_NONE;
         private boolean isImmersiveMode;
+        @Nullable
+        private AlertDialog voiceModeDialog;
 //        private final TextView tvResolution;
 //        private final ImageView ivHd;
 
@@ -1547,6 +1551,14 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             briefLayout = findViewById(R.id.ll_overlay_brief);
 
             dramaTitleTV = findViewById(R.id.tv_overlay_drama_name);
+            voiceModeTV = findViewById(R.id.tv_voice_mode);
+            voiceModeTV.setText(VoiceModeHelper.getModeLabel(VoiceModeHelper.getMode(getContext())));
+            voiceModeTV.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showVoiceModeDialog();
+                }
+            });
             dramaCoverIV = findViewById(R.id.iv_overlay_cover);
             speedTV = findViewById(R.id.tv_speed);
             speedButtonDefaultTextColor = speedTV.getCurrentTextColor();
@@ -1632,10 +1644,52 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                     .into(dramaCoverIV);
             speedTV.setText(getCurrentPlaySpeedLabel());
             resolutionTV.setText(getResolutionButtonText(currentResolution));
+            voiceModeTV.setText(VoiceModeHelper.getModeLabel(VoiceModeHelper.getMode(getContext())));
             refreshResolutionMenuItems();
             refreshSpeedMenuItems();
             setExpandedMenuType(MENU_TYPE_NONE);
             applyImmersiveModeVisibility();
+        }
+
+        private void showVoiceModeDialog() {
+            Activity activity = DramaPlayActivity.this;
+            if (activity.isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed())) {
+                return;
+            }
+            final String[] items = new String[]{"不限", "配音", "原音"};
+            int currentMode = VoiceModeHelper.getMode(getContext());
+            dismissVoiceModeDialogIfShowing();
+            voiceModeDialog = new AlertDialog.Builder(activity)
+                    .setTitle("选择音频模式")
+                    .setSingleChoiceItems(items, currentMode, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            VoiceModeHelper.setMode(getContext(), which);
+                            voiceModeTV.setText(VoiceModeHelper.getModeLabel(which));
+                            dialog.dismiss();
+
+                            Toast.makeText(
+                                    getContext(),
+                                    "已切换为" + VoiceModeHelper.getModeLabel(which) + "，返回列表后生效",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        }
+                    })
+                    .create();
+            voiceModeDialog.show();
+        }
+
+        private void dismissVoiceModeDialogIfShowing() {
+            if (voiceModeDialog != null && voiceModeDialog.isShowing()) {
+                voiceModeDialog.dismiss();
+            }
+            voiceModeDialog = null;
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            dismissVoiceModeDialogIfShowing();
+            super.onDetachedFromWindow();
         }
 
         @Override

@@ -32,6 +32,7 @@ import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.activity.DramaPlayActivity;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
+import com.dramamore.shorts.yanqin.utils.VoiceModeHelper;
 import com.ss.ttvideoengine.Resolution;
 
 import java.util.ArrayList;
@@ -151,11 +152,13 @@ public class RecommendFragment extends Fragment {
                 @Override
                 public void run() {
                     isLoading = false;
-                    if (result.dataList != null && !result.dataList.isEmpty()) {
+                    int voiceMode = VoiceModeHelper.getMode(requireContext());
+                    List<ShortPlay> finalList = VoiceModeHelper.filter(result.dataList, voiceMode);
+                    if (finalList != null && !finalList.isEmpty()) {
                         if (currentPage == 1) {
-                            feedListAdapter.setData(result.dataList);
+                            feedListAdapter.setData(finalList);
                         } else {
-                            feedListAdapter.appendData(result.dataList);
+                            feedListAdapter.appendData(finalList);
                         }
 
                         hasMore = result.hasMore;//鏇村

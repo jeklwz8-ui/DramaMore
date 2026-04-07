@@ -30,6 +30,7 @@ import com.dramamore.shorts.yanqin.adapter.GridSpacingItemDecoration;
 import com.dramamore.shorts.yanqin.adapter.HomeAdapter;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
+import com.dramamore.shorts.yanqin.utils.VoiceModeHelper;
 import com.dramamore.shorts.yanqin.utils.VoiceDramaRequestHelper;
 
 public class HomeFragment extends Fragment {
@@ -147,7 +148,9 @@ public class HomeFragment extends Fragment {
             if (!isInitHotData) {
                 initHotData();
             }
-            if (!isInitVoiceData) {
+            // Voice list request changes PSSDK global voice-language state.
+            // To avoid affecting hot list result, start voice request only after hot request finished.
+            if (isInitHotData && !isInitVoiceData) {
                 initVoiceData();
             }
             if (!isInitMostData) {
@@ -207,6 +210,9 @@ public class HomeFragment extends Fragment {
             @Override
             public void onFail(PSSDK.ErrorInfo errorInfo) {
                 Logs.i(TAG, "initHotData-onFail-errorInfo=" + errorInfo);
+                if (!isInitVoiceData) {
+                    initVoiceData();
+                }
             }
 
             @Override
@@ -219,6 +225,9 @@ public class HomeFragment extends Fragment {
                         adapter.setHeaderHotData(feedListLoadResult.dataList);
                     }
                 });
+                if (!isInitVoiceData) {
+                    initVoiceData();
+                }
             }
         });
     }
@@ -353,18 +362,20 @@ public class HomeFragment extends Fragment {
 
                 boolean posted = postToUiIfAlive(() -> {
                     isLoading = false;
-                    if (adapter != null && result.dataList != null && !result.dataList.isEmpty()) {
+                    int voiceMode = VoiceModeHelper.getMode(requireContext());
+                    List<ShortPlay> finalList = VoiceModeHelper.filter(result.dataList, voiceMode);
+                    if (adapter != null && finalList != null && !finalList.isEmpty()) {
                         if (currentPage == 1) {
-                            cacheShortPlayList(CACHE_HOME_FEED, result.dataList);
+                            cacheShortPlayList(CACHE_HOME_FEED, finalList);
                         }
                         hasMore = result.hasMore;//更多
                         if (result.hasMore) {
                             currentPage++;
                         }
                         if (currentPage == 1) {
-                            adapter.setData(result.dataList);
+                            adapter.setData(finalList);
                         } else {
-                            adapter.addData(result.dataList);
+                            adapter.addData(finalList);
                         }
                     }
                 });

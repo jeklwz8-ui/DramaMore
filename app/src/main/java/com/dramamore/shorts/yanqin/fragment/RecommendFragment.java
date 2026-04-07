@@ -114,20 +114,20 @@ public class RecommendFragment extends Fragment {
     @Override
     public void onPause() {
         super.onPause();
-        stopRecommendPlayback();
+        pauseRecommendPlayback();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        stopRecommendPlayback();
+        pauseRecommendPlayback();
     }
 
     @Override
     public void onHiddenChanged(boolean hidden) {
         super.onHiddenChanged(hidden);
         if (hidden) {
-            stopRecommendPlayback();
+            pauseRecommendPlayback();
         } else {
             if (!isLoading && feedListAdapter != null && feedListAdapter.getItemCount() == 0) {
                 loadMoreData();
@@ -148,6 +148,13 @@ public class RecommendFragment extends Fragment {
         super.onDestroyView();
     }
 
+    private void pauseRecommendPlayback() {
+        cancelPendingStartPlayback();
+        if (feedListAdapter != null) {
+            feedListAdapter.pauseAllPlayback();
+        }
+    }
+
     private void stopRecommendPlayback() {
         cancelPendingStartPlayback();
         if (feedListAdapter != null) {
@@ -155,8 +162,8 @@ public class RecommendFragment extends Fragment {
         }
     }
 
-    public void forceStopPlayback() {
-        stopRecommendPlayback();
+    public void forcePausePlayback() {
+        pauseRecommendPlayback();
     }
 
 

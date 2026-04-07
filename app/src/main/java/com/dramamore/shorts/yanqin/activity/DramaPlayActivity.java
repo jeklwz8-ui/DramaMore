@@ -79,6 +79,7 @@ import com.google.gson.Gson;
 import com.ss.ttvideoengine.Resolution;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -123,6 +124,12 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private int lastBottomInset;
     private Runnable taskWhenResume;
     private int currentPlaySpeedIndex = 0;
+    private boolean isVoiceModeSwitching;
+    private interface VoiceModeSwitchCallback {
+        void onSwitchApplied(int appliedMode);
+
+        void onSwitchFailed();
+    }
 
     public static void start(Context context, ShortPlay shortPlay) {
         start(context, shortPlay, 1, 0);
@@ -325,6 +332,8 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             public void onShortPlayPlayed(ShortPlay shortPlay, int index, EpisodeData episodeData) {
                 // 濮ｅ繋绔撮梿鍡楃磻婵鎸遍弨鐐閸ョ偠鐨熼敍灞藉讲閻劍娼电拋鏉跨秿閹绢厽鏂侀崢鍡楀蕉
                 Logs.i(TAG, "onShortPlayPlayed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
+                DramaPlayActivity.this.shortPlay = shortPlay;
+                logCurrentVoiceType(shortPlay, "播放回调");
                 if (bottomChooseIndexTitleView != null) {
                     bottomChooseIndexTitleView.setText(buildChooseIndexTitle(shortPlay, index));
                 }
@@ -757,6 +766,187 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         ChooseResolutionDialogActivity.start(this, REQUEST_CODE_CHOOSE_RESOLUTION, resolutions, currentResolution);
     }
 
+    private void switchVoiceModeImmediately(int targetMode, int currentMode, @Nullable VoiceModeSwitchCallback callback) {
+        Logs.i(TAG, "[音频模式切换] 发起请求: 当前模式=" + VoiceModeHelper.getModeLabel(currentMode)
+                + "(" + currentMode + ")"
+                + ", 目标模式=" + VoiceModeHelper.getModeLabel(targetMode)
+                + "(" + targetMode + ")"
+                + ", 当前短剧ID=" + (shortPlay == null ? -1 : shortPlay.id)
+                + ", 当前识别类型=" + detectCurrentVoiceTypeLabel(shortPlay));
+
+        if (targetMode == currentMode) {
+            if (callback != null) {
+                callback.onSwitchFailed();
+            }
+            return;
+        }
+        if (isVoiceModeSwitching) {
+            toast("正在切换中，请稍候");
+            Logs.i(TAG, "[音频模式切换] 忽略本次请求: 上一次切换仍在进行中");
+            if (callback != null) {
+                callback.onSwitchFailed();
+            }
+            return;
+        }
+        if (targetMode == VoiceModeHelper.MODE_ALL) {
+            VoiceModeHelper.setMode(this, targetMode);
+            toast("已切换为" + VoiceModeHelper.getModeLabel(targetMode));
+            Logs.i(TAG, "[音频模式切换] 切换成功: 已应用模式=" + VoiceModeHelper.getModeLabel(targetMode));
+            if (callback != null) {
+                callback.onSwitchApplied(targetMode);
+            }
+            return;
+        }
+
+        if (shortPlay != null && isShortPlayMatchMode(shortPlay, targetMode)) {
+            VoiceModeHelper.setMode(this, targetMode);
+            toast("已切换为" + VoiceModeHelper.getModeLabel(targetMode));
+            Logs.i(TAG, "[音频模式切换] 切换成功: 当前视频已符合目标模式, 短剧ID=" + shortPlay.id
+                    + ", 识别类型=" + detectCurrentVoiceTypeLabel(shortPlay));
+            if (callback != null) {
+                callback.onSwitchApplied(targetMode);
+            }
+            return;
+        }
+
+        isVoiceModeSwitching = true;
+        toast("正在切换到" + VoiceModeHelper.getModeLabel(targetMode));
+        PSSDK.requestFeedList(1, 20, new PSSDK.FeedListResultListener() {
+            @Override
+            public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> result) {
+                runOnUiThreadIfNeeded(new Runnable() {
+                    @Override
+                    public void run() {
+                        isVoiceModeSwitching = false;
+                        if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+                            return;
+                        }
+                        List<ShortPlay> finalList = VoiceModeHelper.filter(result == null ? null : result.dataList, targetMode);
+                        int sourceSize = result == null || result.dataList == null ? 0 : result.dataList.size();
+                        int filteredSize = finalList == null ? 0 : finalList.size();
+                        Logs.i(TAG, "[音频模式切换] 拉取结果: 原始数量=" + sourceSize + ", 过滤后数量=" + filteredSize);
+                        ShortPlay targetShortPlay = findSwitchTarget(finalList);
+                        if (targetShortPlay == null) {
+                            toast("暂无" + VoiceModeHelper.getModeLabel(targetMode) + "内容");
+                            Logs.i(TAG, "[音频模式切换] 切换失败: 没有可切换的目标短剧");
+                            if (callback != null) {
+                                callback.onSwitchFailed();
+                            }
+                            return;
+                        }
+                        VoiceModeHelper.setMode(DramaPlayActivity.this, targetMode);
+                        Logs.i(TAG, "[音频模式切换] 切换成功: 目标短剧ID=" + targetShortPlay.id
+                                + ", 目标识别类型=" + detectCurrentVoiceTypeLabel(targetShortPlay));
+                        if (callback != null) {
+                            callback.onSwitchApplied(targetMode);
+                        }
+                        start(DramaPlayActivity.this, targetShortPlay);
+                        finish();
+                    }
+                });
+            }
+
+            @Override
+            public void onFail(PSSDK.ErrorInfo errorInfo) {
+                runOnUiThreadIfNeeded(new Runnable() {
+                    @Override
+                    public void run() {
+                        isVoiceModeSwitching = false;
+                        if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+                            return;
+                        }
+                        toast("切换失败，请稍后重试");
+                        Logs.i(TAG, "[音频模式切换] 切换失败: 请求异常 errorInfo=" + errorInfo);
+                        if (callback != null) {
+                            callback.onSwitchFailed();
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    private void runOnUiThreadIfNeeded(@NonNull Runnable runnable) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            runnable.run();
+        } else {
+            runOnUiThread(runnable);
+        }
+    }
+    @NonNull
+    private List<ShortPlay> filterByVoiceLanguage(@Nullable List<ShortPlay> source, @Nullable String language) {
+        if (source == null || source.isEmpty() || TextUtils.isEmpty(language)) {
+            return Collections.emptyList();
+        }
+        List<ShortPlay> result = new ArrayList<>();
+        for (ShortPlay item : source) {
+            if (item == null) {
+                continue;
+            }
+            if (TextUtils.equals(language, item.voiceLanguage)) {
+                result.add(item);
+            }
+        }
+        return result;
+    }
+
+    @Nullable
+    private ShortPlay findSwitchTarget(@Nullable List<ShortPlay> list) {
+        if (list == null || list.isEmpty()) {
+            return null;
+        }
+        if (shortPlay == null) {
+            return list.get(0);
+        }
+        long currentShortPlayId = shortPlay.id;
+        for (ShortPlay item : list) {
+            if (item == null) {
+                continue;
+            }
+            if (currentShortPlayId != item.id) {
+                return item;
+            }
+        }
+        return list.get(0);
+    }
+
+    private boolean isShortPlayMatchMode(@Nullable ShortPlay item, int mode) {
+        if (mode == VoiceModeHelper.MODE_ORIGINAL) {
+            return VoiceModeHelper.isOriginal(item);
+        }
+        if (mode == VoiceModeHelper.MODE_DUBBED) {
+            return VoiceModeHelper.isDubbed(item);
+        }
+        return true;
+    }
+
+    @NonNull
+    private String detectCurrentVoiceTypeLabel(@Nullable ShortPlay item) {
+        if (VoiceModeHelper.isOriginal(item)) {
+            return "原音";
+        }
+        if (VoiceModeHelper.isDubbed(item)) {
+            return "配音";
+        }
+        return "未知";
+    }
+
+    private void logCurrentVoiceType(@Nullable ShortPlay item, @NonNull String scene) {
+        if (item == null) {
+            Logs.i(TAG, "[音频类型识别] 场景=" + scene + ", shortPlay=null");
+            return;
+        }
+        String voiceLanguage = TextUtils.isEmpty(item.voiceLanguage) ? "null" : item.voiceLanguage;
+        String originalLanguage = TextUtils.isEmpty(item.originalLanguage) ? "null" : item.originalLanguage;
+        Logs.i(TAG, "[音频类型识别] 场景=" + scene
+                + ", 短剧ID=" + item.id
+                + ", voiceLanguage=" + voiceLanguage
+                + ", originalLanguage=" + originalLanguage
+                + ", 识别类型=" + detectCurrentVoiceTypeLabel(item)
+                + ", 当前保存模式=" + VoiceModeHelper.getModeLabel(VoiceModeHelper.getMode(this))
+                + "(" + VoiceModeHelper.getMode(this) + ")");
+    }
+
     private float getCurrentPlaySpeed() {
         return PLAY_SPEEDS[getCurrentPlaySpeedIndex()];
     }
@@ -999,65 +1189,65 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
     }
 
-    private static class CustomProgressBar extends SeekBar implements PSSDK.IControlProgressBar, SeekBar.OnSeekBarChangeListener {
-
-        private ShortPlayFragment shortPlayFragment;
-        private int index;
-
-        public CustomProgressBar(Context context) {
-            super(context);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                setMaxHeight(DpUtils.dp2px(context, 2));
-            }
-            setPadding(DpUtils.dp2px(context,4),0,DpUtils.dp2px(context,4),0);
-            setThumb(getResources().getDrawable(R.drawable.custom_thumb, null));
-            Drawable drawable = ContextCompat.getDrawable(context, R.drawable.custom_seekbar_track);
-            Rect bounds = getProgressDrawable().getBounds();
-            setProgressDrawable(drawable);
-            getProgressDrawable().setBounds(bounds);
-            setOnSeekBarChangeListener(this);
-        }
-
-        @Override
-        public void onProgressChanged(int progressInSeconds, int durationInSeconds) {
-            if (getMax() != durationInSeconds) {
-                setMax(durationInSeconds);
-            }
-            setProgress(progressInSeconds);
-        }
-
-        @Override
-        public void onVideoPlayStateChanged(ShortPlay shortPlay, int i, int i1) {
-
-        }
-
-        @Override
-        public PSSDK.ControlViewType getControlViewType() {
-            return PSSDK.ControlViewType.PROGRESS_BAR;
-        }
-
-        @Override
-        public void bindItemData(ShortPlayFragment shortPlayFragment, ShortPlay shortPlay, int index) {
-            this.shortPlayFragment = shortPlayFragment;
-            this.index = index;
-        }
-
-        @Override
-        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-
-        }
-
-        @Override
-        public void onStartTrackingTouch(SeekBar seekBar) {
-
-        }
-
-        @Override
-        public void onStopTrackingTouch(SeekBar seekBar) {
-            shortPlayFragment.startPlayIndexAndTimeSeconds(this.index, getProgress());
-        }
-    }
+//    private static class CustomProgressBar extends SeekBar implements PSSDK.IControlProgressBar, SeekBar.OnSeekBarChangeListener {
+//
+//        private ShortPlayFragment shortPlayFragment;
+//        private int index;
+//
+//        public CustomProgressBar(Context context) {
+//            super(context);
+//
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+//                setMaxHeight(DpUtils.dp2px(context, 2));
+//            }
+//            setPadding(DpUtils.dp2px(context,4),0,DpUtils.dp2px(context,4),0);
+//            setThumb(getResources().getDrawable(R.drawable.custom_thumb, null));
+//            Drawable drawable = ContextCompat.getDrawable(context, R.drawable.custom_seekbar_track);
+//            Rect bounds = getProgressDrawable().getBounds();
+//            setProgressDrawable(drawable);
+//            getProgressDrawable().setBounds(bounds);
+//            setOnSeekBarChangeListener(this);
+//        }
+//
+//        @Override
+//        public void onProgressChanged(int progressInSeconds, int durationInSeconds) {
+//            if (getMax() != durationInSeconds) {
+//                setMax(durationInSeconds);
+//            }
+//            setProgress(progressInSeconds);
+//        }
+//
+//        @Override
+//        public void onVideoPlayStateChanged(ShortPlay shortPlay, int i, int i1) {
+//
+//        }
+//
+//        @Override
+//        public PSSDK.ControlViewType getControlViewType() {
+//            return PSSDK.ControlViewType.PROGRESS_BAR;
+//        }
+//
+//        @Override
+//        public void bindItemData(ShortPlayFragment shortPlayFragment, ShortPlay shortPlay, int index) {
+//            this.shortPlayFragment = shortPlayFragment;
+//            this.index = index;
+//        }
+//
+//        @Override
+//        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+//
+//        }
+//
+//        @Override
+//        public void onStartTrackingTouch(SeekBar seekBar) {
+//
+//        }
+//
+//        @Override
+//        public void onStopTrackingTouch(SeekBar seekBar) {
+//            shortPlayFragment.startPlayIndexAndTimeSeconds(this.index, getProgress());
+//        }
+//    }
 
     private static class CustomErrorView extends androidx.appcompat.widget.AppCompatTextView implements PSSDK.IControlView {
 
@@ -1638,6 +1828,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             if (bottomChooseIndexTitleView != null) {
                 bottomChooseIndexTitleView.setText(chooseIndexTitle);
             }
+            logCurrentVoiceType(shortPlay, "覆盖层绑定");
             dramaTitleTV.setText(shortPlay.title);
             Glide.with(getContext())
                     .load(shortPlay.coverImage)
@@ -1656,23 +1847,34 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             if (activity.isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed())) {
                 return;
             }
-            final String[] items = new String[]{"默认", "配音", "原音"};
-            int currentMode = VoiceModeHelper.getMode(getContext());
+            final String[] items = new String[]{
+                    VoiceModeHelper.getModeLabel(VoiceModeHelper.MODE_ALL),
+                    VoiceModeHelper.getModeLabel(VoiceModeHelper.MODE_DUBBED),
+                    VoiceModeHelper.getModeLabel(VoiceModeHelper.MODE_ORIGINAL)
+            };
+            final int currentMode = VoiceModeHelper.getMode(getContext());
             dismissVoiceModeDialogIfShowing();
             voiceModeDialog = new AlertDialog.Builder(activity)
                     .setTitle("选择音频模式")
                     .setSingleChoiceItems(items, currentMode, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            VoiceModeHelper.setMode(getContext(), which);
-                            voiceModeTV.setText(VoiceModeHelper.getModeLabel(which));
+                            if (which == currentMode) {
+                                dialog.dismiss();
+                                return;
+                            }
                             dialog.dismiss();
+                            switchVoiceModeImmediately(which, currentMode, new VoiceModeSwitchCallback() {
+                                @Override
+                                public void onSwitchApplied(int appliedMode) {
+                                    voiceModeTV.setText(VoiceModeHelper.getModeLabel(appliedMode));
+                                }
 
-                            Toast.makeText(
-                                    getContext(),
-                                    "已切换为" + VoiceModeHelper.getModeLabel(which) + "，返回列表后生效",
-                                    Toast.LENGTH_SHORT
-                            ).show();
+                                @Override
+                                public void onSwitchFailed() {
+                                    voiceModeTV.setText(VoiceModeHelper.getModeLabel(currentMode));
+                                }
+                            });
                         }
                     })
                     .create();

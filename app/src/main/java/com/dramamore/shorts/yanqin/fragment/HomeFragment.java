@@ -3,6 +3,7 @@ package com.dramamore.shorts.yanqin.fragment;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcelable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -54,6 +55,10 @@ public class HomeFragment extends Fragment {
     private boolean hasMore = false;
     private boolean isLoading = false;
     private HomeAdapter adapter;
+    @Nullable
+    private RecyclerView recyclerView;
+    @Nullable
+    private GridLayoutManager homeLayoutManager;
     private boolean isInitBannerData, isInitHotData, isInitVoiceData, isInitMostData, isInitCartoonData;
     private boolean isHeaderRequestScheduled = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -304,19 +309,22 @@ public class HomeFragment extends Fragment {
         mainHandler.removeCallbacksAndMessages(null);
         isHeaderRequestScheduled = false;
         isLoading = false;
+        recyclerView = null;
+        homeLayoutManager = null;
     }
 
     private void initRecyclerView(View view) {
-        RecyclerView recyclerView = view.findViewById(R.id.rv_home);
+        recyclerView = view.findViewById(R.id.rv_home);
         recyclerView.setHasFixedSize(true);
         recyclerView.addItemDecoration(new GridSpacingItemDecoration(3, DpUtils.dp2px(getActivity(), 10), false));
+        recyclerView.setItemAnimator(null);
 
         adapter = new HomeAdapter();
 
         // 1. 设置三列网格
-        GridLayoutManager layoutManager = new GridLayoutManager(getActivity(), 3);
+        homeLayoutManager = new GridLayoutManager(getActivity(), 3);
         // 2. 設置跨列邏輯
-        layoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
+        homeLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
             @Override
             public int getSpanSize(int position) {
                 // 判斷當前 position 是否為 Header
@@ -328,17 +336,20 @@ public class HomeFragment extends Fragment {
                 }
             }
         });
-        recyclerView.setLayoutManager(layoutManager);
+        recyclerView.setLayoutManager(homeLayoutManager);
         recyclerView.setAdapter(adapter);
 
         // 2. 上拉加载监听
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                if (homeLayoutManager == null) {
+                    return;
+                }
                 if (dy > 0) { // 向下滑动
-                    int visibleItemCount = layoutManager.getChildCount();
-                    int totalItemCount = layoutManager.getItemCount();
-                    int pastVisibleItems = layoutManager.findFirstVisibleItemPosition();
+                    int visibleItemCount = homeLayoutManager.getChildCount();
+                    int totalItemCount = homeLayoutManager.getItemCount();
+                    int pastVisibleItems = homeLayoutManager.findFirstVisibleItemPosition();
 
                     if (!isLoading && hasMore) {
                         if ((visibleItemCount + pastVisibleItems) >= totalItemCount) {
@@ -373,7 +384,7 @@ public class HomeFragment extends Fragment {
                             currentPage++;
                         }
                         if (currentPage == 1) {
-                            adapter.setData(finalList);
+                            setFirstPageDataKeepingScroll(finalList);
                         } else {
                             adapter.addData(finalList);
                         }
@@ -391,6 +402,19 @@ public class HomeFragment extends Fragment {
                 // 处理错误提示
             }
         });
+    }
+
+    private void setFirstPageDataKeepingScroll(@NonNull List<ShortPlay> finalList) {
+        if (adapter == null) {
+            return;
+        }
+        if (recyclerView == null || homeLayoutManager == null || !recyclerView.canScrollVertically(-1)) {
+            adapter.setData(finalList);
+            return;
+        }
+        Parcelable state = homeLayoutManager.onSaveInstanceState();
+        adapter.setData(finalList);
+        homeLayoutManager.onRestoreInstanceState(state);
     }
 
 }

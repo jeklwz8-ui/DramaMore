@@ -2,7 +2,9 @@ package com.dramamore.shorts.yanqin.banner;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.graphics.Rect;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -44,6 +46,10 @@ public class BannerManager {
 
         adapter = new BannerAdapter(pager.getContext(), images);
         viewPager.setAdapter(adapter);
+        // Prevent ViewPager2 page changes from stealing focus and causing parent RecyclerView to scroll.
+        viewPager.setFocusable(false);
+        viewPager.setFocusableInTouchMode(false);
+        viewPager.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
 
         int start = Integer.MAX_VALUE / 2;
         if (!images.isEmpty()) {
@@ -105,6 +111,7 @@ public class BannerManager {
                 createIndicators();
             }
             updateTitle(0);
+            start();
         }
     }
 
@@ -166,8 +173,8 @@ public class BannerManager {
             @Override
             public void run() {
                 Logs.i(TAG, "startAutoScroll-WindowVisibility=" + viewPager.getWindowVisibility());
-                if (viewPager.getWindowVisibility() == View.VISIBLE) {
-                    viewPager.setCurrentItem(viewPager.getCurrentItem() + 1);
+                if (isPagerActuallyVisible() && images.size() > 1) {
+                    viewPager.setCurrentItem(viewPager.getCurrentItem() + 1, false);
                 }
                 handler.postDelayed(this, 3000);
             }
@@ -183,5 +190,22 @@ public class BannerManager {
     public void start() {
         handler.removeCallbacks(runnable);
         handler.postDelayed(runnable, 3000);
+    }
+
+    private boolean isPagerActuallyVisible() {
+        if (viewPager == null || !viewPager.isShown() || viewPager.getWindowVisibility() != View.VISIBLE) {
+            return false;
+        }
+        Rect rect = new Rect();
+        if (!viewPager.getGlobalVisibleRect(rect) || rect.width() <= 0 || rect.height() <= 0) {
+            return false;
+        }
+        int pagerHeight = viewPager.getHeight();
+        if (pagerHeight <= 0) {
+            return false;
+        }
+        float visibleHeightRatio = rect.height() * 1f / pagerHeight;
+        // Keep autoplay active when banner is meaningfully visible.
+        return visibleHeightRatio >= 0.3f;
     }
 }

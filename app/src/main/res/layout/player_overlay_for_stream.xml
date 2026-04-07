@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    >
+    android:layout_height="match_parent">
 
     <TextView
         android:id="@+id/tv_speed"
         android:layout_width="wrap_content"
         android:layout_height="28dp"
         android:layout_gravity="right|top"
-        android:layout_marginTop="20dp"
-        android:layout_marginRight="88dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginRight="90dp"
         android:background="@drawable/bg_black_round_2dp"
         android:drawableStart="@drawable/beis_selector"
         android:drawablePadding="4dp"
@@ -26,7 +25,7 @@
         android:layout_width="wrap_content"
         android:layout_height="28dp"
         android:layout_gravity="right|top"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="16dp"
         android:layout_marginRight="16dp"
         android:background="@drawable/bg_black_round_2dp"
         android:drawableStart="@drawable/res_selector"
@@ -69,72 +68,134 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/ll_overlay_brief"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="40dp"
         android:layout_gravity="bottom"
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        android:orientation="vertical">
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginBottom="72dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/iv_overlay_cover"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginLeft="8dp"
+            android:background="@android:color/transparent"
+            android:scaleType="centerCrop" />
 
         <TextView
             android:id="@+id/tv_overlay_drama_name"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginRight="32dp"
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:textColor="@android:color/white"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textSize="14sp"
+            android:textStyle="normal" />
 
         <TextView
-            android:id="@+id/tv_overlay_drama_desc"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginRight="32dp"
-            android:ellipsize="end"
-            android:maxLines="3"
-            android:textColor="#e6FFFFFF"
-            android:textSize="12sp" />
+            android:id="@+id/tv_voice_mode"
+            android:layout_width="wrap_content"
+            android:layout_height="24dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_black_round_2dp"
+            android:gravity="center"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:text="不限"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:visibility="gone" />
+    </LinearLayout>
 
-        <SeekBar
-            android:id="@+id/sb_overlay"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:maxHeight="4dp"
-            android:thumb="@drawable/custom_thumb"
-            android:progressDrawable="@drawable/custom_seekbar_track"
-            android:splitTrack="false"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp" />
+    <TextView
+        android:id="@+id/tv_overlay_drama_desc"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/view_bottom_mask"
+        android:layout_width="match_parent"
+        android:layout_height="88dp"
+        android:layout_gravity="bottom"
+        android:background="#FF000000" />
+
+    <SeekBar
+        android:id="@+id/sb_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="24dp"
+        android:layout_gravity="bottom"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginBottom="40dp"
+        android:maxHeight="2dp"
+        android:minHeight="24dp"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:progressDrawable="@drawable/custom_seekbar_track"
+        android:splitTrack="false"
+        android:thumb="@drawable/custom_thumb"
+        android:thumbOffset="0dp" />
+
+    <LinearLayout
+        android:id="@+id/ll_bottom_actions"
+        android:layout_width="match_parent"
+        android:layout_height="32dp"
+        android:layout_gravity="bottom"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginBottom="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
         <LinearLayout
             android:id="@+id/ll_choose_index"
-            android:layout_width="match_parent"
-            android:layout_height="36dp"
-            android:layout_marginTop="5dp"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
             android:background="@drawable/bg_black_round_2dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingLeft="16dp"
-            android:paddingRight="16dp">
+            android:paddingLeft="12dp"
+            android:paddingRight="12dp">
 
             <TextView
                 android:id="@+id/tv_overlay_choose_index_title"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:alpha="0.8"
-                android:text="45 Eps XXX"
+                android:alpha="0.95"
                 android:textColor="@android:color/white"
                 android:textSize="12sp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:alpha="0.8"
-                android:text=">"
-                android:textColor="@android:color/white"
-                android:textSize="12sp" />
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="8dp"
+                android:rotation="180"
+                android:src="@drawable/arrow_down"
+                android:tint="#CCFFFFFF" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_play_all"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginLeft="8dp"
+            android:background="@drawable/bg_black_round_2dp"
+            android:drawableStart="@drawable/play_n"
+            android:drawablePadding="4dp"
+            android:gravity="center"
+            android:paddingLeft="12dp"
+            android:paddingRight="12dp"
+            android:text="播放全集"
+            android:textColor="@android:color/white"
+            android:textSize="14sp" />
     </LinearLayout>
 </merge>

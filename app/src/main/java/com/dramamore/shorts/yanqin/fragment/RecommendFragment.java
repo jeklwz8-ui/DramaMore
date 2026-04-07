@@ -11,6 +11,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -24,6 +25,7 @@ import androidx.lifecycle.LifecycleOwner;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.bumptech.glide.Glide;
 import com.bytedance.sdk.shortplay.api.EpisodeData;
 import com.bytedance.sdk.shortplay.api.PSSDK;
 import com.bytedance.sdk.shortplay.api.ShortPlay;
@@ -34,6 +36,7 @@ import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
 import com.dramamore.shorts.yanqin.utils.VoiceModeHelper;
 import com.ss.ttvideoengine.Resolution;
+import com.ss.ttvideoengine.TTVideoEngineInterface;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -307,12 +310,15 @@ public class RecommendFragment extends Fragment {
         private final TextView chooseIndexTitleTV;
         private final TextView dramaTitleTV;
         private final TextView dramaDescTV;
+        private final ImageView dramaCoverIV;
+        private final TextView playAllTV;
         private final TextView speedTV;
         private final TextView resolutionTV;
         private final View speedResolutionMenuLayout;
         private final LinearLayout speedMenuPanel;
         private final LinearLayout resolutionMenuPanel;
         private final SeekBar progressBar;
+        private final View bottomExtraSpacerView;
 
         private final int speedResolutionNormalTextColor = Color.parseColor("#CCFFFFFF");
         private final int speedResolutionActiveTextColor = Color.parseColor("#FFF84E40");
@@ -337,9 +343,17 @@ public class RecommendFragment extends Fragment {
                     DramaPlayActivity.start(v.getContext(), shortPlay);
                 }
             });
+            playAllTV = findViewById(R.id.tv_play_all);
+            playAllTV.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    DramaPlayActivity.start(v.getContext(), shortPlay);
+                }
+            });
 
             dramaTitleTV = findViewById(R.id.tv_overlay_drama_name);
             dramaDescTV = findViewById(R.id.tv_overlay_drama_desc);
+            dramaCoverIV = findViewById(R.id.iv_overlay_cover);
 
             speedTV = findViewById(R.id.tv_speed);
             speedButtonDefaultTextColor = speedTV.getCurrentTextColor();
@@ -390,13 +404,16 @@ public class RecommendFragment extends Fragment {
                 }
             });
 
+            bottomExtraSpacerView = new View(getContext());
+            bottomExtraSpacerView.setBackgroundColor(Color.TRANSPARENT);
+
             refreshSpeedMenuItems();
             refreshResolutionMenuItems();
         }
 
         private void applyTopButtonOffset() {
-            int buttonTopMargin = DpUtils.dp2px(getContext(), 32);
-            int menuTopMargin = DpUtils.dp2px(getContext(), 66);
+            int buttonTopMargin = DpUtils.dp2px(getContext(), 16);
+            int menuTopMargin = DpUtils.dp2px(getContext(), 50);
 
             FrameLayout.LayoutParams speedParams = (FrameLayout.LayoutParams) speedTV.getLayoutParams();
             speedParams.topMargin = buttonTopMargin;
@@ -420,15 +437,41 @@ public class RecommendFragment extends Fragment {
         public void bindItemData(ShortPlayFragment shortPlayFragment, ShortPlay shortPlay, int index) {
             this.shortPlayFragment = shortPlayFragment;
             this.shortPlay = shortPlay;
-            chooseIndexTitleTV.setText(shortPlay.total + shortPlayFragment.getContext().getString(R.string.s_eps) + " - " + shortPlay.title);
+            chooseIndexTitleTV.setText(buildChooseIndexTitle(shortPlay, index));
             dramaTitleTV.setText(shortPlay.title);
             dramaDescTV.setText(shortPlay.desc);
+            Glide.with(getContext())
+                    .load(shortPlay.coverImage)
+                    .into(dramaCoverIV);
             speedTV.setText(getCurrentPlaySpeedLabel());
             resolutionTV.setText(getResolutionButtonText(currentResolution));
             refreshResolutionMenuItems();
             refreshSpeedMenuItems();
             setExpandedMenuType(MENU_TYPE_NONE);
             applyCurrentPlaySpeed();
+            applyBottomExtraSpacer();
+        }
+
+        private void applyBottomExtraSpacer() {
+            if (shortPlayFragment == null) {
+                return;
+            }
+            FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
+                    LayoutParams.MATCH_PARENT,
+                    DpUtils.dp2px(getContext(), 96)
+            );
+            bottomExtraSpacerView.setLayoutParams(layoutParams);
+            shortPlayFragment.setBottomExtraViewContent(bottomExtraSpacerView, ShortPlayFragment.BottomViewType.OTHER);
+        }
+
+        private String buildChooseIndexTitle(@NonNull ShortPlay shortPlay, int index) {
+            int currentEpisode = index <= 0 ? 1 : index;
+            int totalEpisodes = shortPlay.total > 0 ? shortPlay.total : 1;
+            if (currentEpisode > totalEpisodes) {
+                currentEpisode = totalEpisodes;
+            }
+            String progressLabel = shortPlay.progressState == ShortPlay.PROGRESS_STATE_END ? "已完结" : "连载中";
+            return "第" + currentEpisode + "集 · 全" + totalEpisodes + "集（" + progressLabel + "）";
         }
 
         @Override
@@ -677,10 +720,12 @@ public class RecommendFragment extends Fragment {
             ShortPlay shortPlay = playList.get(position);
             PSSDK.DetailPageConfig.Builder builder = new PSSDK.DetailPageConfig.Builder();
             builder.hideLeftTopCloseAndTitle(true, null)
-                    .displayBottomExtraView(false)
+                    .displayBottomExtraView(true)
                     .displayProgressBar(false)
                     .displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_TITLE, false)
                     .displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_DESC, false)
+                    // Fill the screen width first, keep aspect ratio to avoid vertical stretching.
+                    .setVideoDisplayMode(TTVideoEngineInterface.IMAGE_LAYOUT_ASPECT_FILL_X)
                     .playSingleItem(true);
             ShortPlayFragment detailFragment = PSSDK.createDetailFragment(shortPlay, builder.build(), new PSSDK.ShortPlayDetailPageListener() {
                 private DramaPlayActivity.ProgressChangeListener progressChangeListener;
@@ -835,7 +880,9 @@ public class RecommendFragment extends Fragment {
         public void setData(List<ShortPlay> fragments) {
             this.playList.clear();
             this.playList.addAll(fragments);
-            notifyItemRangeInserted(0, fragments.size());
+            // ViewPager2 full refresh: replacing entire list with range-insert may cause holder position inconsistency.
+            fragmentMap.clear();
+            notifyDataSetChanged();
         }
 
         public void appendData(List<ShortPlay> fragments) {

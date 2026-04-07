@@ -37,6 +37,12 @@ npm start
 - Search and filter functionality
 - Contribution guidelines for authors and actors
 
+## Update Log
+- 2026-04-07: Mine page added two new entries between language settings and privacy protocol: "评价我们" and "分享我们".
+- 2026-04-07: "评价我们" opens Google Play rating page (`market://details`) with web fallback.
+- 2026-04-07: "分享我们" opens Android share panel with app link text.
+- 2026-04-07: Standardized icons for "评价我们", "分享我们", and "隐私协议" in Mine page.
+
 ## Contributing
 We welcome contributions! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
 

@@ -34,7 +34,7 @@ public class VoiceModeHelper {
             case MODE_ORIGINAL:
                 return "原音";
             default:
-                return "不限";
+                return "默认";
         }
     }
 

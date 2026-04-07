@@ -1656,7 +1656,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             if (activity.isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed())) {
                 return;
             }
-            final String[] items = new String[]{"不限", "配音", "原音"};
+            final String[] items = new String[]{"默认", "配音", "原音"};
             int currentMode = VoiceModeHelper.getMode(getContext());
             dismissVoiceModeDialogIfShowing();
             voiceModeDialog = new AlertDialog.Builder(activity)

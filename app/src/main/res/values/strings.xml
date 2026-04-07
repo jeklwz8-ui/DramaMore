@@ -22,10 +22,14 @@
     <string name="s_clear_success">清除成功！</string>
     <string name="s_play_his">观看记录</string>
     <string name="s_lang_set">语言设置</string>
+    <string name="s_rate_us">评价我们</string>
+    <string name="s_share_us">分享我们</string>
     <string name="s_protocol">隐私协议</string>
     <string name="s_clear">清除缓存</string>
     <string name="s_version">版本信息</string>
     <string name="s_sure">确定</string>
+    <string name="s_share_title">分享给朋友</string>
+    <string name="s_share_content">快来看看DramaMore：https://play.google.com/store/apps/details?id=%1$s</string>
 
     <string name="s_zh_hans">简体中文</string>
     <string name="s_zh_hant">繁体中文</string>

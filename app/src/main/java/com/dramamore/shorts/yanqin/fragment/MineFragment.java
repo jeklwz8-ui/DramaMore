@@ -73,6 +73,18 @@ public class MineFragment extends Fragment implements LanguageChooseDialog.Conte
                 configDialog.show(getChildFragmentManager(), "config_dialog");
             }
         });
+        view.findViewById(R.id.fl_rate).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openAppRatingPage();
+            }
+        });
+        view.findViewById(R.id.fl_share).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                shareApp();
+            }
+        });
         view.findViewById(R.id.fl_protocol).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -107,6 +119,39 @@ public class MineFragment extends Fragment implements LanguageChooseDialog.Conte
             }
         } catch (Exception e) {
             Logs.i(TAG, "应用跳转异常：" + e.getMessage());
+        }
+    }
+
+    private void openAppRatingPage() {
+        Context context = getContext();
+        if (context == null) {
+            return;
+        }
+        String packageName = context.getPackageName();
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + packageName));
+            intent.setPackage("com.android.vending");
+            startActivity(intent);
+        } catch (Exception e) {
+            openUrlInExternalBrowser(context, "https://play.google.com/store/apps/details?id=" + packageName);
+        }
+    }
+
+    private void shareApp() {
+        Context context = getContext();
+        if (context == null) {
+            return;
+        }
+        String packageName = context.getPackageName();
+        String shareContent = getString(R.string.s_share_content, packageName);
+        try {
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("text/plain");
+            intent.putExtra(Intent.EXTRA_TEXT, shareContent);
+            startActivity(Intent.createChooser(intent, getString(R.string.s_share_title)));
+        } catch (Exception e) {
+            Logs.i(TAG, "分享异常：" + e.getMessage());
+            Toast.makeText(context, getString(R.string.s_error), Toast.LENGTH_SHORT).show();
         }
     }
 

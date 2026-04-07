@@ -77,6 +77,9 @@ public class MainActivity extends AppCompatActivity {
                 fragment = profileFragment;
             }
 
+            if (itemId != R.id.nav_recommend && recommendFragment instanceof RecommendFragment) {
+                ((RecommendFragment) recommendFragment).forceStopPlayback();
+            }
             return FragmentUtils.switchFragment(MainActivity.this,fragment);
         });
     }

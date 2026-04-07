@@ -43,9 +43,15 @@ import java.util.Map;
 
 public class RecommendFragment extends Fragment {
     private static final String TAG = "RecommendFragment";
+    private static final int MAX_CONTINUOUS_FILTERED_EMPTY_PAGES = 8;
     private int currentPage = 1;
     private boolean hasMore = false;
     private boolean isLoading = false;
+    private int continuousFilteredEmptyPages = 0;
+    private int currentSelectedPosition = 0;
+    private ViewPager2 recommendViewPager;
+    @Nullable
+    private Runnable pendingStartPlaybackRunnable;
     private FeedListAdapter feedListAdapter;
 
     @Nullable
@@ -59,15 +65,17 @@ public class RecommendFragment extends Fragment {
     }
 
     private void initViewPage(View view) {
-        ViewPager2 vp2 = view.findViewById(R.id.vp_shortplay_feed);
-        vp2.setOrientation(ViewPager2.ORIENTATION_VERTICAL);
+        recommendViewPager = view.findViewById(R.id.vp_shortplay_feed);
+        recommendViewPager.setOrientation(ViewPager2.ORIENTATION_VERTICAL);
         feedListAdapter = new FeedListAdapter(this);
-        vp2.setAdapter(feedListAdapter);
-        vp2.setOffscreenPageLimit(3);
-        vp2.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+        recommendViewPager.setAdapter(feedListAdapter);
+        recommendViewPager.setOffscreenPageLimit(3);
+        recommendViewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
 
             @Override
             public void onPageSelected(int position) {
+                currentSelectedPosition = position;
+                startPlaybackForPosition(position);
                 int nextPos = position + 1;
                 ShortPlayFragment playFragment = feedListAdapter.getFragmentByPosition(nextPos);
                 Log.d(TAG, "棰勫姞杞戒笅涓€閮ㄥ墽锛歱os=" + nextPos + ", " + playFragment);
@@ -96,8 +104,10 @@ public class RecommendFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        if (!isLoading && currentPage == 1) {
+        if (!isLoading && (currentPage == 1 || (feedListAdapter != null && feedListAdapter.getItemCount() == 0))) {
             loadMoreData();
+        } else {
+            startRecommendPlayback();
         }
     }
 
@@ -118,6 +128,12 @@ public class RecommendFragment extends Fragment {
         super.onHiddenChanged(hidden);
         if (hidden) {
             stopRecommendPlayback();
+        } else {
+            if (!isLoading && feedListAdapter != null && feedListAdapter.getItemCount() == 0) {
+                loadMoreData();
+            } else {
+                startRecommendPlayback();
+            }
         }
     }
 
@@ -128,17 +144,73 @@ public class RecommendFragment extends Fragment {
             feedListAdapter.destroy();
             feedListAdapter = null;
         }
+        recommendViewPager = null;
         super.onDestroyView();
     }
 
     private void stopRecommendPlayback() {
+        cancelPendingStartPlayback();
         if (feedListAdapter != null) {
-            feedListAdapter.pauseAllPlayback();
             feedListAdapter.stopAllPlayback();
         }
     }
 
+    public void forceStopPlayback() {
+        stopRecommendPlayback();
+    }
+
+
+
+    private void startRecommendPlayback() {
+        if (!isAdded() || isHidden() || recommendViewPager == null) {
+            return;
+        }
+        startPlaybackForPosition(currentSelectedPosition);
+    }
+
+    private void startPlaybackForPosition(int position) {
+        cancelPendingStartPlayback();
+        if (!isAdded() || isHidden() || recommendViewPager == null) {
+            return;
+        }
+        if (feedListAdapter == null) {
+            return;
+        }
+        ShortPlayFragment fragment = feedListAdapter.getFragmentByPosition(position);
+        if (fragment != null) {
+            fragment.startPlay();
+            return;
+        }
+        if (recommendViewPager != null) {
+            pendingStartPlaybackRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    pendingStartPlaybackRunnable = null;
+                    if (!isAdded() || isHidden() || feedListAdapter == null) {
+                        return;
+                    }
+                    ShortPlayFragment delayedFragment = feedListAdapter.getFragmentByPosition(position);
+                    if (delayedFragment != null) {
+                        delayedFragment.startPlay();
+                    }
+                }
+            };
+            recommendViewPager.postDelayed(pendingStartPlaybackRunnable,120);
+        }
+    }
+
+    private void cancelPendingStartPlayback() {
+        if (recommendViewPager != null && pendingStartPlaybackRunnable != null) {
+            recommendViewPager.removeCallbacks(pendingStartPlaybackRunnable);
+        }
+        pendingStartPlaybackRunnable = null;
+    }
+
+
     private void loadMoreData() {
+        if (isLoading) {
+            return;
+        }
         isLoading = true;
         PSSDK.requestFeedList(currentPage, 20, feedListLoadResult);
     }
@@ -148,22 +220,55 @@ public class RecommendFragment extends Fragment {
         public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> result) {
             Logs.i(TAG, "loadMoreData-onSuccess-feedListLoadResult-hasMore=" + result.hasMore + ",size=" + result.dataList.size());
 
-            getActivity().runOnUiThread(new Runnable() {
+            FragmentActivity activity = getActivity();
+            if (activity == null) {
+                isLoading = false;
+                return;
+            }
+            activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     isLoading = false;
+                    int requestedPage = currentPage;
                     int voiceMode = VoiceModeHelper.getMode(requireContext());
                     List<ShortPlay> finalList = VoiceModeHelper.filter(result.dataList, voiceMode);
+                    boolean useAllModeFallback = false;
+                    if ((finalList == null || finalList.isEmpty())
+                            && voiceMode != VoiceModeHelper.MODE_ALL
+                            && result.dataList != null
+                            && !result.dataList.isEmpty()) {
+                        // Recommend page fallback: avoid black screen when voice filter has no matches.
+                        finalList = result.dataList;
+                        useAllModeFallback = true;
+                        Logs.i(TAG, "loadMoreData-fallback to MODE_ALL for recommend page, requestedPage=" + requestedPage);
+                    }
+                    hasMore = result.hasMore;
+                    if (result.hasMore) {
+                        currentPage++;
+                    }
+
                     if (finalList != null && !finalList.isEmpty()) {
-                        if (currentPage == 1) {
+                        continuousFilteredEmptyPages = 0;
+                        if (requestedPage == 1) {
                             feedListAdapter.setData(finalList);
+                            currentSelectedPosition = 0;
+                            if (recommendViewPager != null) {
+                                recommendViewPager.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        startRecommendPlayback();
+                                    }
+                                });
+                            }
                         } else {
                             feedListAdapter.appendData(finalList);
                         }
-
-                        hasMore = result.hasMore;//鏇村
-                        if (result.hasMore) {
-                            currentPage++;
+                    } else if (result.hasMore && !useAllModeFallback) {
+                        continuousFilteredEmptyPages++;
+                        if (continuousFilteredEmptyPages <= MAX_CONTINUOUS_FILTERED_EMPTY_PAGES) {
+                            loadMoreData();
+                        } else {
+                            Logs.i(TAG, "loadMoreData-skip too many empty filtered pages, stop auto continue");
                         }
                     }
                 }

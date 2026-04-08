@@ -1,10 +1,8 @@
 package com.dramamore.shorts.yanqin.banner;
 
 import android.content.Context;
-import android.graphics.Outline;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewOutlineProvider;
 import android.widget.ImageView;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -58,23 +56,12 @@ public class BannerAdapter extends RecyclerView.Adapter<BannerAdapter.ViewHolder
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 
         ImageView imageView = new ImageView(context);
-        imageView.post(() -> {
-            imageView.setOutlineProvider(new ViewOutlineProvider() {
-                @Override
-                public void getOutline(View view, Outline outline) {
-                    int radius = 20;
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
-                }
-            });
-        });
-        imageView.setClipToOutline(true);
-
         imageView.setLayoutParams(new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
-        imageView.setScaleType(ImageView.ScaleType.FIT_XY);
+        imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
 
         return new ViewHolder(imageView);
     }

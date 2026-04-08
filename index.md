@@ -38,6 +38,29 @@ npm start
 - Contribution guidelines for authors and actors
 
 ## Update Log
+- 2026-04-08: Unified the top hero scrim and the banner scrim to a single shared drawable (`bg_home_shared_scrim`) so both layers use the same background and no longer produce mismatched corner blocks.
+- 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after shared-scrim unification.
+- 2026-04-08: Fixed small black corner blocks behind home carousel rounded top corners by replacing full-screen dark overlay with a top-only scrim (`bg_home_top_scrim`) and unifying bottom scrim to 4-corner radius.
+- 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after carousel corner black-block cleanup.
+- 2026-04-08: Home carousel now enforces consistent 4-corner rounding via `ViewPager2Parent` path-based clipping; `ViewPager2` and its internal RecyclerView background are explicitly transparent to prevent black corner artifacts behind rounded edges.
+- 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after 4-corner carousel rounding and black-corner artifact fix.
+- 2026-04-08: Fixed black corner artifacts above home carousel by removing inner image-level rounded clipping in `BannerAdapter`; carousel now uses unified container-level rounded clipping only.
+- 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after black-corner artifact fix on home carousel.
+- 2026-04-08: Home banner `ViewPager2Parent` block now applies unified rounded clipping (`bg_banner_rounded` + `clipToOutline`), ensuring inner `ViewPager2` content and outer card corners stay visually consistent.
+- 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after banner unified-corner clipping adjustment.
+- 2026-04-08: Fine-tuned home hero again: reduced search-to-banner gap, increased inner banner height, strengthened blur, and added pre-Android-12 fallback blur-like processing for carousel-backed background images.
+- 2026-04-08: Softened bottom title-area backdrop further with lighter gradient/overlay opacity for a more transparent and less layered look.
+- 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after latest spacing/blur/height refinements.
+- 2026-04-08: Further tuned home hero visuals: increased banner backdrop blur strength, increased hero/banner heights, and moved the search bar downward from the top for closer design alignment.
+- 2026-04-08: Smoothed banner title background layering by using a softer full-card gradient (`bg_banner_bottom_scrim`) with reduced opacity to avoid hard separation artifacts.
+- 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after latest hero blur/height/search-offset refinements.
+- 2026-04-08: Home banner blur was strengthened (Android 12+ RenderEffect radius increased), banner card height was slightly increased, and title-area layered background was softened by switching to full-card smooth scrim gradient.
+- 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after blur/height/title-background optimization.
+- 2026-04-08: Home banner now drives a blurred backdrop layer behind the search bar using current carousel data (`iv_banner_bg_blur`), and the top hero section was merged to eliminate black gaps under rounded banner corners.
+- 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after home blurred-background and black-area fix.
+- 2026-04-08: Home header search icon and banner layout were restyled to match the provided design: independent top search bar, updated spacing/radius/translucent background, and redesigned banner title/indicator positioning.
+- 2026-04-08: Banner visuals were refined for design consistency: carousel image now uses center-crop with rounded corners, plus a bottom scrim overlay and compact dot indicators.
+- 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after home search/banner style updates.
 - 2026-04-08: Recommend page custom progress bar visibility is now deferred until valid playback progress is received (`duration > 0`), so the bar appears only after video content is actually rendered.
 - 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after deferred progress-bar visibility optimization.
 - 2026-04-08: Recommend page custom progress bar (`sb_recommend_progress`) was moved slightly downward (`layout_marginBottom` adjusted to `-2dp`) for better visual alignment.

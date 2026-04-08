@@ -5,6 +5,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -304,6 +305,7 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         TextView tvMostMore;
         TextView tvCartoonMore;
         TextView tvBannerTitle;
+        ImageView ivBannerBgBlur;
         FrameLayout flSearch;
         BannerManager bannerManager;
 
@@ -312,8 +314,9 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             bannerPager = itemView.findViewById(R.id.bannerPager);
             indicatorLayout = itemView.findViewById(R.id.indicatorLayout);
             tvBannerTitle = itemView.findViewById(R.id.tv_banner_title);
+            ivBannerBgBlur = itemView.findViewById(R.id.iv_banner_bg_blur);
             List<ShortPlay> bannerDatas = new ArrayList<>();
-            bannerManager = new BannerManager(bannerPager, indicatorLayout, tvBannerTitle, bannerDatas);
+            bannerManager = new BannerManager(bannerPager, indicatorLayout, tvBannerTitle, ivBannerBgBlur, bannerDatas);
 
             flSearch = itemView.findViewById(R.id.fl_search);
             llHot = itemView.findViewById(R.id.ll_hot);

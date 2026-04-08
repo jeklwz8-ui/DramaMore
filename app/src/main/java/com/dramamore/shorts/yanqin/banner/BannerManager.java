@@ -2,7 +2,13 @@ package com.dramamore.shorts.yanqin.banner;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Build;
+import android.graphics.Color;
+import android.graphics.RenderEffect;
 import android.graphics.Rect;
+import android.graphics.Shader;
+import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -10,8 +16,14 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.target.CustomTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.bytedance.sdk.shortplay.api.ShortPlay;
 
 import java.util.ArrayList;
@@ -27,25 +39,39 @@ public class BannerManager {
     private ViewPager2 viewPager;
     private LinearLayout indicatorLayout;
     private TextView titleView;
+    private ImageView backgroundView;
     private Handler handler = new Handler(Looper.getMainLooper());
 
     private Runnable runnable;
     private List<ShortPlay> images = new ArrayList<>();
     BannerAdapter adapter;
+    @Nullable
+    private CustomTarget<Bitmap> backgroundBitmapTarget;
     private boolean isAttached = false; // 记录状态
     public BannerManager(ViewPager2 pager, LinearLayout indicator, List<ShortPlay> list) {
-        this(pager, indicator, null, list);
+        this(pager, indicator, null, null, list);
     }
 
     public BannerManager(ViewPager2 pager, LinearLayout indicator, TextView title, List<ShortPlay> list) {
+        this(pager, indicator, title, null, list);
+    }
+
+    public BannerManager(ViewPager2 pager, LinearLayout indicator, TextView title, ImageView background, List<ShortPlay> list) {
         viewPager = pager;
         indicatorLayout = indicator;
         titleView = title;
+        backgroundView = background;
         images.clear();
         images.addAll(list);
+        applyBlurEffectIfNeeded();
 
         adapter = new BannerAdapter(pager.getContext(), images);
         viewPager.setAdapter(adapter);
+        viewPager.setBackgroundColor(Color.TRANSPARENT);
+        View recyclerChild = viewPager.getChildAt(0);
+        if (recyclerChild instanceof RecyclerView) {
+            recyclerChild.setBackgroundColor(Color.TRANSPARENT);
+        }
         // Prevent ViewPager2 page changes from stealing focus and causing parent RecyclerView to scroll.
         viewPager.setFocusable(false);
         viewPager.setFocusableInTouchMode(false);
@@ -69,6 +95,7 @@ public class BannerManager {
                     int real = position % images.size();
                     updateIndicators(real);
                     updateTitle(real);
+                    updateBackground(real);
                 }
             }
 
@@ -111,6 +138,7 @@ public class BannerManager {
                 createIndicators();
             }
             updateTitle(0);
+            updateBackground(0);
             start();
         }
     }
@@ -126,13 +154,15 @@ public class BannerManager {
     }
 
     private void createIndicators() {
+        int dotSize = dpToPx(6);
+        int dotHorizontalMargin = dpToPx(3);
 
         for (int i = 0; i < images.size(); i++) {
 
             ImageView dot = new ImageView(viewPager.getContext());
 
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(18, 18);
-            params.setMargins(10, 0, 10, 0);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dotSize, dotSize);
+            params.setMargins(dotHorizontalMargin, 0, dotHorizontalMargin, 0);
             dot.setLayoutParams(params);
             dot.setImageResource(R.drawable.indicator_inactive);
 
@@ -141,6 +171,12 @@ public class BannerManager {
 
         updateIndicators(0);
         updateTitle(0);
+        updateBackground(0);
+    }
+
+    private int dpToPx(int dp) {
+        float density = viewPager.getContext().getResources().getDisplayMetrics().density;
+        return Math.round(dp * density);
     }
 
     private void updateIndicators(int position) {
@@ -167,6 +203,73 @@ public class BannerManager {
         titleView.setText(shortPlay != null ? shortPlay.title : "");
     }
 
+    private void updateBackground(int position) {
+        if (backgroundView == null) {
+            return;
+        }
+        if (images.isEmpty() || position < 0 || position >= images.size()) {
+            clearBackgroundTarget();
+            backgroundView.setImageDrawable(null);
+            return;
+        }
+        ShortPlay shortPlay = images.get(position);
+        if (shortPlay == null) {
+            clearBackgroundTarget();
+            backgroundView.setImageDrawable(null);
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            clearBackgroundTarget();
+            Glide.with(backgroundView)
+                    .load(shortPlay.coverImage)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .into(backgroundView);
+        } else {
+            clearBackgroundTarget();
+            backgroundBitmapTarget = new CustomTarget<Bitmap>() {
+                @Override
+                public void onResourceReady(@NonNull Bitmap resource, @Nullable Transition<? super Bitmap> transition) {
+                    backgroundView.setImageBitmap(createBlurLikeBitmap(resource));
+                }
+
+                @Override
+                public void onLoadCleared(@Nullable Drawable placeholder) {
+                    backgroundView.setImageDrawable(placeholder);
+                }
+            };
+            Glide.with(backgroundView)
+                    .asBitmap()
+                    .load(shortPlay.coverImage)
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .into(backgroundBitmapTarget);
+        }
+    }
+
+    private void clearBackgroundTarget() {
+        if (backgroundView != null && backgroundBitmapTarget != null) {
+            Glide.with(backgroundView).clear(backgroundBitmapTarget);
+        }
+        backgroundBitmapTarget = null;
+    }
+
+    private Bitmap createBlurLikeBitmap(@NonNull Bitmap source) {
+        // 增加模糊程度：减小缩放因子以进一步降低分辨率，从而增加模糊效果
+        int scaledWidth = Math.max(1, Math.round(source.getWidth() * 0.05f));
+        int scaledHeight = Math.max(1, Math.round(source.getHeight() * 0.05f));
+        Bitmap lowRes = Bitmap.createScaledBitmap(source, scaledWidth, scaledHeight, true);
+        return Bitmap.createScaledBitmap(lowRes, source.getWidth(), source.getHeight(), true);
+    }
+
+    private void applyBlurEffectIfNeeded() {
+        if (backgroundView == null) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // 增加 RenderEffect 的模糊半径
+            backgroundView.setRenderEffect(RenderEffect.createBlurEffect(100f, 100f, Shader.TileMode.CLAMP));
+        }
+    }
+
     private void startAutoScroll() {
 
         runnable = new Runnable() {
@@ -188,7 +291,7 @@ public class BannerManager {
     }
 
     public void start() {
-        handler.removeCallbacks(runnable);
+        handler.removeCallbacksAndMessages(null);
         handler.postDelayed(runnable, 3000);
     }
 

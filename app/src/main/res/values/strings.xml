@@ -44,4 +44,14 @@
     <string name="s_most">收藏最多</string>
     <string name="s_voice_drama">配音剧</string>
     <string name="s_cartoon">动漫短剧</string>
+    <string name="s_rate_dialog_title">评价我们</string>
+    <string name="s_rate_dialog_subtitle">“为此观剧打个分吧”</string>
+    <string name="s_rate_label_1">很不满意</string>
+    <string name="s_rate_label_2">不满意</string>
+    <string name="s_rate_label_3">一般</string>
+    <string name="s_rate_label_4">满意</string>
+    <string name="s_rate_label_5">非常满意</string>
+    <string name="s_rate_feedback_hint">输入您想反馈的问题...</string>
+    <string name="s_rate_submit">提交评价</string>
+    <string name="s_rate_submit_success">感谢你的反馈</string>
 </resources>

@@ -2,12 +2,10 @@ package com.dramamore.shorts.yanqin.fragment;
 
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -27,13 +25,10 @@ import com.dramamore.shorts.yanqin.activity.DramaPlayActivity;
 import com.dramamore.shorts.yanqin.activity.HistoryActivity;
 import com.dramamore.shorts.yanqin.activity.WebViewActivity;
 import com.dramamore.shorts.yanqin.dao.HistoryDao;
-import com.dramamore.shorts.yanqin.database.FollowDatabase;
 import com.dramamore.shorts.yanqin.database.HistoryDatabase;
 import com.dramamore.shorts.yanqin.dialog.LanguageChooseDialog;
-import com.dramamore.shorts.yanqin.entity.FollowDaoEntity;
+import com.dramamore.shorts.yanqin.dialog.RateUsDialog;
 import com.dramamore.shorts.yanqin.entity.HistoryDaoEntity;
-import com.dramamore.shorts.yanqin.utils.AppUtils;
-import com.dramamore.shorts.yanqin.utils.FileUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
 import com.dramamore.shorts.yanqin.utils.ShortUtils;
 import com.dramamore.shorts.yanqin.widget.RoundImageView;
@@ -41,100 +36,49 @@ import com.dramamore.shorts.yanqin.widget.RoundImageView;
 import java.util.List;
 
 public class MineFragment extends Fragment implements LanguageChooseDialog.ContentLanguageChangeListener {
-    HistoryDao historyDao;
-    private LinearLayout llHis;
     private static final String TAG = "MineFragment";
+
+    private HistoryDao historyDao;
+    private LinearLayout llHis;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        // 建议创建对应的 layout 文件：fragment_home.xml
         View view = inflater.inflate(R.layout.fragment_mine, container, false);
         HistoryDatabase historyDatabase = HistoryDatabase.getDatabase(getActivity());
         historyDao = historyDatabase.historyDao();
-
         initView(view);
         return view;
     }
 
     private void initView(View view) {
-        view.findViewById(R.id.fl_history).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                HistoryActivity.start(getContext());
-            }
-        });
+        view.findViewById(R.id.fl_history).setOnClickListener(v -> HistoryActivity.start(getContext()));
         llHis = view.findViewById(R.id.ll_his);
-        view.findViewById(R.id.fl_lang).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                LanguageChooseDialog configDialog = new LanguageChooseDialog();
-                configDialog.setLanguageChangeListener(MineFragment.this);
-                configDialog.show(getChildFragmentManager(), "config_dialog");
-            }
+        view.findViewById(R.id.fl_lang).setOnClickListener(v -> {
+            LanguageChooseDialog configDialog = new LanguageChooseDialog();
+            configDialog.setLanguageChangeListener(MineFragment.this);
+            configDialog.show(getChildFragmentManager(), "config_dialog");
         });
-        view.findViewById(R.id.fl_rate).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                openAppRatingPage();
-            }
-        });
-        view.findViewById(R.id.fl_share).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                shareApp();
-            }
-        });
-        view.findViewById(R.id.fl_protocol).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                WebViewActivity.start(getContext());
-            }
-        });
-        view.findViewById(R.id.fl_clear).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                /**
-                 * 清除本地缓存
-                 */
-                PSSDK.clearLocalCache();
-                Toast.makeText(getActivity(), getString(R.string.s_clear_success), Toast.LENGTH_SHORT).show();
-            }
+        view.findViewById(R.id.fl_rate).setOnClickListener(v -> showRateUsDialog());
+        view.findViewById(R.id.fl_share).setOnClickListener(v -> shareApp());
+        view.findViewById(R.id.fl_protocol).setOnClickListener(v -> WebViewActivity.start(getContext()));
+        view.findViewById(R.id.fl_clear).setOnClickListener(v -> {
+            PSSDK.clearLocalCache();
+            Toast.makeText(getActivity(), getString(R.string.s_clear_success), Toast.LENGTH_SHORT).show();
         });
         TextView tvVersion = view.findViewById(R.id.tv_version);
         tvVersion.setText(BuildConfig.VERSION_NAME);
     }
 
-    public void openUrlInExternalBrowser(Context context, String url) {
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-            // 标记为外部浏览器打开，避免唤起其他应用
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-            // 检查是否有可用的浏览器应用
-            if (intent.resolveActivity(context.getPackageManager()) != null) {
-                context.startActivity(intent);
-            } else {
-                Logs.i(TAG, "应用跳转失败-url=" + url);
-            }
-        } catch (Exception e) {
-            Logs.i(TAG, "应用跳转异常：" + e.getMessage());
-        }
-    }
-
-    private void openAppRatingPage() {
-        Context context = getContext();
-        if (context == null) {
+    private void showRateUsDialog() {
+        if (!isAdded()) {
             return;
         }
-        String packageName = context.getPackageName();
-        try {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + packageName));
-            intent.setPackage("com.android.vending");
-            startActivity(intent);
-        } catch (Exception e) {
-            openUrlInExternalBrowser(context, "https://play.google.com/store/apps/details?id=" + packageName);
+        if (getChildFragmentManager().findFragmentByTag("rate_us_dialog") != null) {
+            return;
         }
+        RateUsDialog dialog = new RateUsDialog();
+        dialog.show(getChildFragmentManager(), "rate_us_dialog");
     }
 
     private void shareApp() {
@@ -150,7 +94,7 @@ public class MineFragment extends Fragment implements LanguageChooseDialog.Conte
             intent.putExtra(Intent.EXTRA_TEXT, shareContent);
             startActivity(Intent.createChooser(intent, getString(R.string.s_share_title)));
         } catch (Exception e) {
-            Logs.i(TAG, "分享异常：" + e.getMessage());
+            Logs.i(TAG, "shareApp error: " + e.getMessage());
             Toast.makeText(context, getString(R.string.s_error), Toast.LENGTH_SHORT).show();
         }
     }
@@ -177,62 +121,59 @@ public class MineFragment extends Fragment implements LanguageChooseDialog.Conte
         PSSDK.setContentLanguages(languages);
 
         FragmentActivity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
         Intent intent = activity.getIntent();
         activity.finish();
         startActivity(intent);
     }
 
     private void loadCache() {
-
     }
 
     private void loadHistory() {
-        HistoryDatabase.executor.execute(new Runnable() {
-            @Override
-            public void run() {
-                // 1. 获取当前页数据
-                List<HistoryDaoEntity> newData = historyDao.getPagedHistories(3, 0);
-                if (!newData.isEmpty()) {
-                    // 3. 更新偏移量，为下一页做准备
-                    // 4. 将数据回调给 UI 层 (比如通过 LiveData 或 Handler)
-                    updateUI(newData);
-                }
+        HistoryDatabase.executor.execute(() -> {
+            List<HistoryDaoEntity> newData = historyDao.getPagedHistories(3, 0);
+            if (!newData.isEmpty()) {
+                updateUI(newData);
             }
         });
     }
 
     private void updateUI(List<HistoryDaoEntity> newData) {
-        getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                Logs.i(TAG, "updateUI-size=" + newData.size());
-                for (int i = 0; i < newData.size(); i++) {
-                    if (i >= 3) break;
-                    HistoryDaoEntity historyDaoEntity = newData.get(i);
-                    ShortPlay shortPlay = ShortUtils.jsonToShortPlay(historyDaoEntity.short_json);
-                    View childAt = llHis.getChildAt(i);
-                    childAt.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View v) {
-                            DramaPlayActivity.start(getActivity(), shortPlay);
-                        }
-                    });
-                    RoundImageView imageView = childAt.findViewById(R.id.ic_cover);
-                    imageView.setRadius(10);
-                    Glide.with(getActivity()).load(shortPlay.coverImage).diskCacheStrategy(DiskCacheStrategy.ALL).into(imageView);
-                    TextView tvHotValue = childAt.findViewById(R.id.tv_hot_value);
-                    tvHotValue.setText(ShortUtils.convertToK(shortPlay.totalCollectCount));
-                    TextView tvEpisode = childAt.findViewById(R.id.tv_episode);
-                    tvEpisode.setText(shortPlay.total + getString(R.string.s_eps));
-                    TextView tvName = childAt.findViewById(R.id.tv_name);
-                    tvName.setText(shortPlay.title);
-                    TextView tvSawNum = childAt.findViewById(R.id.tv_saw_num);
-                    tvSawNum.setText(getContext().getString(R.string.s_saw_num) + historyDaoEntity.play_index + getContext().getString(R.string.s_eps));
+        FragmentActivity activity = getActivity();
+        if (activity == null) {
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            Logs.i(TAG, "updateUI-size=" + newData.size());
+            for (int i = 0; i < newData.size(); i++) {
+                if (i >= 3) {
+                    break;
+                }
+                HistoryDaoEntity historyDaoEntity = newData.get(i);
+                ShortPlay shortPlay = ShortUtils.jsonToShortPlay(historyDaoEntity.short_json);
+                View childAt = llHis.getChildAt(i);
+                childAt.setOnClickListener(v -> DramaPlayActivity.start(getActivity(), shortPlay));
+                RoundImageView imageView = childAt.findViewById(R.id.ic_cover);
+                imageView.setRadius(10);
+                Glide.with(activity)
+                        .load(shortPlay.coverImage)
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .into(imageView);
+                TextView tvHotValue = childAt.findViewById(R.id.tv_hot_value);
+                tvHotValue.setText(ShortUtils.convertToK(shortPlay.totalCollectCount));
+                TextView tvEpisode = childAt.findViewById(R.id.tv_episode);
+                tvEpisode.setText(shortPlay.total + getString(R.string.s_eps));
+                TextView tvName = childAt.findViewById(R.id.tv_name);
+                tvName.setText(shortPlay.title);
+                TextView tvSawNum = childAt.findViewById(R.id.tv_saw_num);
+                Context context = getContext();
+                if (context != null) {
+                    tvSawNum.setText(context.getString(R.string.s_saw_num) + historyDaoEntity.play_index + context.getString(R.string.s_eps));
                 }
             }
         });
-
     }
-
 }
-

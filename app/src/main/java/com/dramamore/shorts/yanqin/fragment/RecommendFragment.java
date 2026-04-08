@@ -32,6 +32,8 @@ import com.bytedance.sdk.shortplay.api.ShortPlay;
 import com.bytedance.sdk.shortplay.api.ShortPlayFragment;
 import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.activity.DramaPlayActivity;
+import com.dramamore.shorts.yanqin.dialog.IndexChooseDialog;
+import com.dramamore.shorts.yanqin.listener.IIndexChooseListener;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
 import com.dramamore.shorts.yanqin.utils.VoiceModeHelper;
@@ -53,6 +55,17 @@ public class RecommendFragment extends Fragment {
     private int continuousFilteredEmptyPages = 0;
     private int currentSelectedPosition = 0;
     private ViewPager2 recommendViewPager;
+    private View recommendBottomActionsView;
+    private TextView recommendChooseIndexTitleTV;
+    private TextView recommendPlayAllTV;
+    private SeekBar recommendProgressBar;
+    private boolean isBottomProgressTracking;
+    private final Map<Integer, ProgressState> progressStateMap = new HashMap<>();
+    @Nullable
+    private ShortPlay currentVisibleShortPlay;
+    private int currentVisibleEpisodeIndex = 1;
+    @Nullable
+    private IndexChooseDialog chooseIndexDialog;
     @Nullable
     private Runnable pendingStartPlaybackRunnable;
     private FeedListAdapter feedListAdapter;
@@ -69,6 +82,53 @@ public class RecommendFragment extends Fragment {
 
     private void initViewPage(View view) {
         recommendViewPager = view.findViewById(R.id.vp_shortplay_feed);
+        recommendBottomActionsView = view.findViewById(R.id.ll_recommend_bottom_actions);
+        recommendChooseIndexTitleTV = view.findViewById(R.id.tv_recommend_choose_index_title);
+        recommendPlayAllTV = view.findViewById(R.id.tv_recommend_play_all);
+        recommendProgressBar = view.findViewById(R.id.sb_recommend_progress);
+        recommendProgressBar.setMax(1);
+        recommendProgressBar.setProgress(0);
+        recommendProgressBar.setVisibility(View.GONE);
+        recommendProgressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                isBottomProgressTracking = true;
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                isBottomProgressTracking = false;
+                if (feedListAdapter == null) {
+                    return;
+                }
+                ShortPlayFragment currentFragment = feedListAdapter.getFragmentByPosition(currentSelectedPosition);
+                if (currentFragment != null) {
+                    currentFragment.setCurrentPlayTimeSeconds(seekBar.getProgress());
+                }
+            }
+        });
+        View chooseIndexView = view.findViewById(R.id.ll_recommend_choose_index);
+        chooseIndexView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showChooseIndexDialog();
+            }
+        });
+        recommendPlayAllTV.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (currentVisibleShortPlay != null) {
+                    DramaPlayActivity.start(v.getContext(), currentVisibleShortPlay);
+                }
+            }
+        });
+        if (recommendBottomActionsView != null) {
+            recommendBottomActionsView.setVisibility(View.GONE);
+        }
         recommendViewPager.setOrientation(ViewPager2.ORIENTATION_VERTICAL);
         feedListAdapter = new FeedListAdapter(this);
         recommendViewPager.setAdapter(feedListAdapter);
@@ -78,6 +138,8 @@ public class RecommendFragment extends Fragment {
             @Override
             public void onPageSelected(int position) {
                 currentSelectedPosition = position;
+                refreshBottomActionsForPosition(position);
+                refreshBottomProgressForPosition(position);
                 startPlaybackForPosition(position);
                 int nextPos = position + 1;
                 ShortPlayFragment playFragment = feedListAdapter.getFragmentByPosition(nextPos);
@@ -143,15 +205,25 @@ public class RecommendFragment extends Fragment {
     @Override
     public void onDestroyView() {
         stopRecommendPlayback();
+        dismissChooseIndexDialog();
         if (feedListAdapter != null) {
             feedListAdapter.destroy();
             feedListAdapter = null;
         }
+        currentVisibleShortPlay = null;
+        currentVisibleEpisodeIndex = 1;
+        recommendBottomActionsView = null;
+        recommendChooseIndexTitleTV = null;
+        recommendPlayAllTV = null;
+        isBottomProgressTracking = false;
+        progressStateMap.clear();
+        recommendProgressBar = null;
         recommendViewPager = null;
         super.onDestroyView();
     }
 
     private void pauseRecommendPlayback() {
+        dismissChooseIndexDialog();
         cancelPendingStartPlayback();
         if (feedListAdapter != null) {
             feedListAdapter.pauseAllPlayback();
@@ -260,8 +332,11 @@ public class RecommendFragment extends Fragment {
                     if (finalList != null && !finalList.isEmpty()) {
                         continuousFilteredEmptyPages = 0;
                         if (requestedPage == 1) {
+                            progressStateMap.clear();
                             feedListAdapter.setData(finalList);
                             currentSelectedPosition = 0;
+                            refreshBottomActionsForPosition(0);
+                            refreshBottomProgressForPosition(0);
                             if (recommendViewPager != null) {
                                 recommendViewPager.post(new Runnable() {
                                     @Override
@@ -293,6 +368,148 @@ public class RecommendFragment extends Fragment {
         }
     };
 
+    private void refreshBottomActionsForPosition(int position) {
+        if (feedListAdapter == null) {
+            return;
+        }
+        ShortPlay shortPlay = feedListAdapter.getShortPlayByPosition(position);
+        if (shortPlay == null) {
+            if (recommendBottomActionsView != null) {
+                recommendBottomActionsView.setVisibility(View.GONE);
+            }
+            currentVisibleShortPlay = null;
+            return;
+        }
+        currentVisibleShortPlay = shortPlay;
+        currentVisibleEpisodeIndex = 1;
+        if (recommendBottomActionsView != null) {
+            recommendBottomActionsView.setVisibility(View.VISIBLE);
+        }
+        updateBottomChooseTitle(shortPlay, currentVisibleEpisodeIndex);
+    }
+
+    private void refreshBottomProgressForPosition(int position) {
+        if (recommendProgressBar == null) {
+            return;
+        }
+        ProgressState state = progressStateMap.get(position);
+        boolean shouldShow = state != null && state.hasVideoFrame;
+        int durationInSeconds = state == null ? 0 : state.durationInSeconds;
+        int progressInSeconds = state == null ? 0 : state.progressInSeconds;
+        int safeMax = Math.max(durationInSeconds, 1);
+        if (recommendProgressBar.getMax() != safeMax) {
+            recommendProgressBar.setMax(safeMax);
+        }
+        recommendProgressBar.setProgress(Math.max(0, Math.min(progressInSeconds, safeMax)));
+        recommendProgressBar.setVisibility(shouldShow ? View.VISIBLE : View.GONE);
+    }
+
+    private void onBottomProgressChanged(int position, int progressInSeconds, int durationInSeconds) {
+        ProgressState state = progressStateMap.get(position);
+        if (state == null) {
+            state = new ProgressState();
+            progressStateMap.put(position, state);
+        }
+        state.durationInSeconds = Math.max(durationInSeconds, 0);
+        state.progressInSeconds = Math.max(progressInSeconds, 0);
+        if (state.durationInSeconds > 0) {
+            state.hasVideoFrame = true;
+        }
+        if (position != currentSelectedPosition || recommendProgressBar == null || isBottomProgressTracking) {
+            return;
+        }
+        int safeMax = Math.max(state.durationInSeconds, 1);
+        if (recommendProgressBar.getMax() != safeMax) {
+            recommendProgressBar.setMax(safeMax);
+        }
+        recommendProgressBar.setProgress(Math.max(0, Math.min(state.progressInSeconds, safeMax)));
+        recommendProgressBar.setVisibility(state.hasVideoFrame ? View.VISIBLE : View.GONE);
+    }
+
+    private void markCurrentProgressWaitingForFrame() {
+        if (recommendProgressBar == null) {
+            return;
+        }
+        ProgressState state = progressStateMap.get(currentSelectedPosition);
+        if (state == null) {
+            state = new ProgressState();
+            progressStateMap.put(currentSelectedPosition, state);
+        }
+        state.hasVideoFrame = false;
+        state.progressInSeconds = 0;
+        state.durationInSeconds = 0;
+        recommendProgressBar.setProgress(0);
+        recommendProgressBar.setVisibility(View.GONE);
+    }
+
+    private void onCurrentEpisodeChanged(int position, @NonNull ShortPlay shortPlay, int index) {
+        if (position != currentSelectedPosition) {
+            return;
+        }
+        currentVisibleShortPlay = shortPlay;
+        currentVisibleEpisodeIndex = index <= 0 ? 1 : index;
+        updateBottomChooseTitle(shortPlay, currentVisibleEpisodeIndex);
+        markCurrentProgressWaitingForFrame();
+    }
+
+    private void updateBottomChooseTitle(@NonNull ShortPlay shortPlay, int index) {
+        if (recommendChooseIndexTitleTV == null) {
+            return;
+        }
+        int currentEpisode = index <= 0 ? 1 : index;
+        int totalEpisodes = shortPlay.total > 0 ? shortPlay.total : (shortPlay.episodes == null ? 1 : shortPlay.episodes.size());
+        if (totalEpisodes <= 0) {
+            totalEpisodes = 1;
+        }
+        if (currentEpisode > totalEpisodes) {
+            currentEpisode = totalEpisodes;
+        }
+        String progressLabel = shortPlay.progressState == ShortPlay.PROGRESS_STATE_END ? "已完结" : "连载中";
+        recommendChooseIndexTitleTV.setText("第" + currentEpisode + "集 · 全" + totalEpisodes + "集（" + progressLabel + "）");
+    }
+
+    private void showChooseIndexDialog() {
+        if (!isAdded() || currentVisibleShortPlay == null) {
+            return;
+        }
+        FragmentActivity activity = getActivity();
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+            return;
+        }
+        dismissChooseIndexDialog();
+        chooseIndexDialog = new IndexChooseDialog(activity, currentVisibleShortPlay, currentVisibleEpisodeIndex, new IIndexChooseListener() {
+            @Override
+            public void onChooseIndex(int index) {
+                currentVisibleEpisodeIndex = index <= 0 ? 1 : index;
+                if (currentVisibleShortPlay != null) {
+                    updateBottomChooseTitle(currentVisibleShortPlay, currentVisibleEpisodeIndex);
+                }
+                if (feedListAdapter == null) {
+                    return;
+                }
+                ShortPlayFragment fragment = feedListAdapter.getFragmentByPosition(currentSelectedPosition);
+                if (fragment != null) {
+                    markCurrentProgressWaitingForFrame();
+                    fragment.startPlayIndex(currentVisibleEpisodeIndex);
+                }
+            }
+        });
+        chooseIndexDialog.show();
+    }
+
+    private void dismissChooseIndexDialog() {
+        if (chooseIndexDialog != null && chooseIndexDialog.isShowing()) {
+            chooseIndexDialog.dismiss();
+        }
+        chooseIndexDialog = null;
+    }
+
+    private static class ProgressState {
+        int progressInSeconds;
+        int durationInSeconds;
+        boolean hasVideoFrame;
+    }
+
     private interface ResolutionChangeListener {
         void onResolutionChanged(String resolution);
     }
@@ -307,18 +524,17 @@ public class RecommendFragment extends Fragment {
         private static final int MENU_TYPE_SPEED = 1;
         private static final int MENU_TYPE_RESOLUTION = 2;
 
-        private final TextView chooseIndexTitleTV;
+//        private final TextView chooseIndexTitleTV;
         private final TextView dramaTitleTV;
-        private final TextView dramaDescTV;
+//        private final TextView dramaDescTV;
         private final ImageView dramaCoverIV;
-        private final TextView playAllTV;
+//        private final TextView playAllTV;
         private final TextView speedTV;
         private final TextView resolutionTV;
         private final View speedResolutionMenuLayout;
         private final LinearLayout speedMenuPanel;
         private final LinearLayout resolutionMenuPanel;
         private final SeekBar progressBar;
-        private final View bottomExtraSpacerView;
 
         private final int speedResolutionNormalTextColor = Color.parseColor("#CCFFFFFF");
         private final int speedResolutionActiveTextColor = Color.parseColor("#FFF84E40");
@@ -335,24 +551,26 @@ public class RecommendFragment extends Fragment {
         public CustomOverlayView(Context context) {
             super(context);
             inflate(context, R.layout.player_overlay_for_stream, this);
+//            View oldBottomActions = findViewById(R.id.ll_bottom_actions);
+//            oldBottomActions.setVisibility(View.GONE);
 
-            chooseIndexTitleTV = findViewById(R.id.tv_overlay_choose_index_title);
-            findViewById(R.id.ll_choose_index).setOnClickListener(new OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    DramaPlayActivity.start(v.getContext(), shortPlay);
-                }
-            });
-            playAllTV = findViewById(R.id.tv_play_all);
-            playAllTV.setOnClickListener(new OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    DramaPlayActivity.start(v.getContext(), shortPlay);
-                }
-            });
+//            chooseIndexTitleTV = findViewById(R.id.tv_overlay_choose_index_title);
+//            findViewById(R.id.ll_choose_index).setOnClickListener(new OnClickListener() {
+//                @Override
+//                public void onClick(View v) {
+//                    DramaPlayActivity.start(v.getContext(), shortPlay);
+//                }
+//            });
+//            playAllTV = findViewById(R.id.tv_play_all);
+//            playAllTV.setOnClickListener(new OnClickListener() {
+//                @Override
+//                public void onClick(View v) {
+//                    DramaPlayActivity.start(v.getContext(), shortPlay);
+//                }
+//            });
 
             dramaTitleTV = findViewById(R.id.tv_overlay_drama_name);
-            dramaDescTV = findViewById(R.id.tv_overlay_drama_desc);
+//            dramaDescTV = findViewById(R.id.tv_overlay_drama_desc);
             dramaCoverIV = findViewById(R.id.iv_overlay_cover);
 
             speedTV = findViewById(R.id.tv_speed);
@@ -387,6 +605,7 @@ public class RecommendFragment extends Fragment {
             });
 
             progressBar = findViewById(R.id.sb_overlay);
+            progressBar.setVisibility(View.GONE);
             progressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                 @Override
                 public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -403,9 +622,6 @@ public class RecommendFragment extends Fragment {
                     }
                 }
             });
-
-            bottomExtraSpacerView = new View(getContext());
-            bottomExtraSpacerView.setBackgroundColor(Color.TRANSPARENT);
 
             refreshSpeedMenuItems();
             refreshResolutionMenuItems();
@@ -437,9 +653,9 @@ public class RecommendFragment extends Fragment {
         public void bindItemData(ShortPlayFragment shortPlayFragment, ShortPlay shortPlay, int index) {
             this.shortPlayFragment = shortPlayFragment;
             this.shortPlay = shortPlay;
-            chooseIndexTitleTV.setText(buildChooseIndexTitle(shortPlay, index));
+//            chooseIndexTitleTV.setText(buildChooseIndexTitle(shortPlay, index));
             dramaTitleTV.setText(shortPlay.title);
-            dramaDescTV.setText(shortPlay.desc);
+//            dramaDescTV.setText(shortPlay.desc);
             Glide.with(getContext())
                     .load(shortPlay.coverImage)
                     .into(dramaCoverIV);
@@ -449,19 +665,6 @@ public class RecommendFragment extends Fragment {
             refreshSpeedMenuItems();
             setExpandedMenuType(MENU_TYPE_NONE);
             applyCurrentPlaySpeed();
-            applyBottomExtraSpacer();
-        }
-
-        private void applyBottomExtraSpacer() {
-            if (shortPlayFragment == null) {
-                return;
-            }
-            FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
-                    LayoutParams.MATCH_PARENT,
-                    DpUtils.dp2px(getContext(), 96)
-            );
-            bottomExtraSpacerView.setLayoutParams(layoutParams);
-            shortPlayFragment.setBottomExtraViewContent(bottomExtraSpacerView, ShortPlayFragment.BottomViewType.OTHER);
         }
 
         private String buildChooseIndexTitle(@NonNull ShortPlay shortPlay, int index) {
@@ -702,6 +905,13 @@ public class RecommendFragment extends Fragment {
             return fragmentMap.get(position);
         }
 
+        public @Nullable ShortPlay getShortPlayByPosition(int position) {
+            if (position < 0 || position >= playList.size()) {
+                return null;
+            }
+            return playList.get(position);
+        }
+
         @Override
         public void onDestroy(@NonNull LifecycleOwner owner) {
             DefaultLifecycleObserver.super.onDestroy(owner);
@@ -720,7 +930,7 @@ public class RecommendFragment extends Fragment {
             ShortPlay shortPlay = playList.get(position);
             PSSDK.DetailPageConfig.Builder builder = new PSSDK.DetailPageConfig.Builder();
             builder.hideLeftTopCloseAndTitle(true, null)
-                    .displayBottomExtraView(true)
+                    .displayBottomExtraView(false)
                     .displayProgressBar(false)
                     .displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_TITLE, false)
                     .displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_DESC, false)
@@ -743,6 +953,7 @@ public class RecommendFragment extends Fragment {
                     if (progressChangeListener != null) {
                         progressChangeListener.onProgressChanged(currentPlayTime, duration);
                     }
+                    RecommendFragment.this.onBottomProgressChanged(position, currentPlayTime, duration);
                 }
 
                 @Override
@@ -753,6 +964,7 @@ public class RecommendFragment extends Fragment {
                 @Override
                 public void onShortPlayPlayed(ShortPlay shortPlay, int index, EpisodeData episodeData) {
                     Log.d(TAG, "onShortPlayPlayed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
+                    RecommendFragment.this.onCurrentEpisodeChanged(position, shortPlay, index);
                 }
 
                 @Override
@@ -855,8 +1067,8 @@ public class RecommendFragment extends Fragment {
 
                     CustomOverlayView customOverlayView = new CustomOverlayView(activity);
                     params=new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
-                    customOverlayView.setLayoutParams(params);
                     params.bottomMargin = DpUtils.dp2px(activity, 20);
+                    customOverlayView.setLayoutParams(params);
                     views.add(customOverlayView);
                     progressChangeListener = customOverlayView;
                     resolutionChangeListener = customOverlayView;

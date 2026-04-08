@@ -1,4 +1,4 @@
-# DramaMore Project Index
+﻿# DramaMore Project Index
 
 ## Overview
 DramaMore is an innovative platform designed to provide users with an extensive catalog of dramatic works, including plays, scripts, and performances.
@@ -38,6 +38,36 @@ npm start
 - Contribution guidelines for authors and actors
 
 ## Update Log
+- 2026-04-08：修复播放页自定义右侧操作区闪退问题：右侧“收藏/倍速/清晰度”入口改为按“容器 + 子文案/图标”绑定，避免把 `LinearLayout` 误当成 `TextView` 强转；同时播放页自定义控件改用 Activity 上下文创建，并移除 SDK 点赞残留注入。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页右侧自定义操作区闪退修复后的工程构建通过。
+- 2026-04-08：播放页右侧首个自定义按钮已由点赞功能切换为收藏功能，继续保持当前图标样式不变；点击后改为调用 `PSSDK.setCollected(...)`，并同步本地收藏状态。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页自定义按钮由点赞改为收藏后的工程构建通过。
+- 2026-04-08：播放页点赞入口已彻底切换为页面自定义 overlay 按钮，不再使用 SDK 默认点赞图标；右侧三项现为自定义“点赞、倍速、清晰度”操作区，点赞点击直接走 `PSSDK.setLike(...)`。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页改为自定义点赞按钮并移除 SDK 点赞控件后的工程构建通过。
+- 2026-04-08：播放页右侧操作区已按设计图重排为“点赞、倍速、清晰度”三项竖排结构；倍速和清晰度入口改为播放器右侧中下区域展示，点赞位置同步对齐到同一列。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页右侧操作区按设计图重排后的工程构建通过。
+- 2026-04-08：播放页已移除右侧分享与收藏图标按钮，仅保留当前页面需要的播放控制项；分享入口和收藏入口不再在 `DramaPlayActivity` 播放界面展示。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页移除分享与收藏按钮后的工程构建通过。
+- 2026-04-08：播放页已隐藏 SDK 默认左上返回按钮，改为使用播放页自定义返回箭头，并将箭头顶部偏移下调，方便单独控制返回图标位置。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页返回箭头改为自定义并下移后的工程构建通过。
+- 2026-04-08：播放页主布局已按推荐页播放器骨架重新对齐，恢复为“上方视频区 + 下方独立底栏”的同款结构；沉浸式时底栏改为 `INVISIBLE` 保持占位，避免位置跳动。
+- 2026-04-08：播放页 overlay 已进一步贴近推荐页样式，底部简介区不再额外展示语种按钮视觉占位，整体观感更接近推荐页播放器。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页按推荐页播放器骨架复刻后的工程构建通过。
+- 2026-04-08：播放页播放器容器已继续整体上移，并同步对底部可见区域做压缩处理，进一步提升画面重心，减少下半部分占比。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页继续上移并压缩下方可见区域后的工程构建通过。
+- 2026-04-08：播放页根布局顶部安全区内边距已从播放器本体移除，视频画面整体上移；顶部倍速、清晰度菜单改为单独按状态栏安全区做偏移，避免上移后遮挡。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页整体上移并保持顶部控制安全区后的工程构建通过。
+- 2026-04-08：播放页底部操作栏已从根布局独立占位改为覆盖在播放器上的悬浮层，进入沉浸式时仅隐藏悬浮层，不再触发播放器区域重新测量和位置跳变。
+- 2026-04-08：播放页底部进度条位置已改为随悬浮底部栏和系统安全区动态计算，保证非沉浸式时进度条贴着悬浮栏顶部，沉浸式切换时播放器位置保持稳定。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页底部栏改为悬浮层后的工程构建通过。
+- 2026-04-08：播放页已关闭 SDK 底部额外内容保留区 `displayBottomExtraView(false)`，视频画面现在会继续向下填充到自定义进度条所在位置。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页视频区域下探到进度条位置后的工程构建通过。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页新增专用播放器覆盖层并切换为推荐页同款横向铺满显示模式后，工程构建通过。
+- 2026-04-08：播放页新增专用播放器覆盖层布局 `player_overlay_for_play.xml`，用于和推荐页播放器样式解耦，单独承载播放页的倍速、清晰度、语种与底部信息展示。
+- 2026-04-08：播放页播放器显示模式已切换为与推荐页一致的横向铺满模式，优先填满左右宽度，并对上下超出区域做裁切填充处理。
+- 2026-04-08：播放页 `DramaPlayActivity` 底部布局已改为与推荐页一致，改为页面级自定义底部选集条与页面级自定义进度条，不再使用播放页原有的独立固定选集布局和 SDK 默认进度条展示方式。
+- 2026-04-08：播放页选集入口已切换为本地 `IndexChooseDialog`，并保留倍速、清晰度、语种切换、广告与历史记录等原有能力；右侧“播放全集”按钮用于快速回到第 1 集重新播放。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，播放页改为推荐页同款底部布局后的工程构建通过。
 - 2026-04-08: Unified the top hero scrim and the banner scrim to a single shared drawable (`bg_home_shared_scrim`) so both layers use the same background and no longer produce mismatched corner blocks.
 - 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after shared-scrim unification.
 - 2026-04-08: Fixed small black corner blocks behind home carousel rounded top corners by replacing full-screen dark overlay with a top-only scrim (`bg_home_top_scrim`) and unifying bottom scrim to 4-corner radius.
@@ -71,10 +101,10 @@ npm start
 - 2026-04-08: Validation log: executed `./gradlew.bat :app:assembleDebug` successfully after custom recommend choose-bar implementation.
 - 2026-04-08: Fix recommend page episode bar visibility regression. Restored `ll_bottom_actions` to overlay rendering path and kept bottom spacer logic for player area separation.
 - 2026-04-08: Validation log: re-ran `./gradlew.bat :app:assembleDebug`, build passed successfully after visibility fix.
-- 2026-04-07: Mine page added two new entries between language settings and privacy protocol: "评价我们" and "分享我们".
-- 2026-04-07: "评价我们" opens Google Play rating page (`market://details`) with web fallback.
-- 2026-04-07: "分享我们" opens Android share panel with app link text.
-- 2026-04-07: Standardized icons for "评价我们", "分享我们", and "隐私协议" in Mine page.
+- 2026-04-07: Mine page added two new entries between language settings and privacy protocol: "璇勪环鎴戜滑" and "鍒嗕韩鎴戜滑".
+- 2026-04-07: "璇勪环鎴戜滑" opens Google Play rating page (`market://details`) with web fallback.
+- 2026-04-07: "鍒嗕韩鎴戜滑" opens Android share panel with app link text.
+- 2026-04-07: Standardized icons for "璇勪环鎴戜滑", "鍒嗕韩鎴戜滑", and "闅愮鍗忚" in Mine page.
 
 ## Contributing
 We welcome contributions! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.

@@ -68,6 +68,7 @@ import com.dramamore.shorts.yanqin.App;
 import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.dao.HistoryDao;
 import com.dramamore.shorts.yanqin.database.HistoryDatabase;
+import com.dramamore.shorts.yanqin.dialog.IndexChooseDialog;
 import com.dramamore.shorts.yanqin.entity.HistoryDaoEntity;
 import com.dramamore.shorts.yanqin.listener.IIndexChooseListener;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
@@ -77,6 +78,7 @@ import com.dramamore.shorts.yanqin.utils.ShortUtils;
 import com.dramamore.shorts.yanqin.utils.VoiceModeHelper;
 import com.google.gson.Gson;
 import com.ss.ttvideoengine.Resolution;
+import com.ss.ttvideoengine.TTVideoEngineInterface;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -96,6 +98,8 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private static final int PROGRESS_TO_CHOOSE_GAP_DP = 5; // 进度条与选择条的间距
     private static final int BRIEF_TO_PROGRESS_GAP_DP = 8; //简介与进度条的间距
     private static final float MAX_VIDEO_SPEED = 3.0f; // 最大视频速度
+    private static final int FLOATING_BOTTOM_ACTIONS_HEIGHT_DP = 56;
+    private static final int FLOATING_PROGRESS_OVERLAY_OFFSET_DP = 2;
     private static final float[] PLAY_SPEEDS = new float[]{1.0f, 1.5f, 2.0f};
     private static final String[] PLAY_SPEED_LABELS = new String[]{"1.0X", "1.5X", "2.0X"};
     private static final String DEFAULT_RESOLUTION_TEXT = "360P";
@@ -113,18 +117,31 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     //private int startFromSeconds;
     private PAGRewardedAd rewardedAd;
     private View bottomDefaultView;
+    private View playerAreaView;
+    private View playBottomActionsView;
     private TextView bottomChooseIndexTitleView;
+    private TextView playAllView;
     private View fixedChooseIndexView;
+    private SeekBar bottomProgressBar;
     private CustomOverlayView customOverlayView;
     private Resolution[] resolutions;
     private Resolution currentResolution;
     private boolean hasShowRetainDialog;
     private boolean hasShowUnlockMoreDialog;
     private boolean isInImmersiveMode;
+    private int lastTopInset;
     private int lastBottomInset;
     private Runnable taskWhenResume;
     private int currentPlaySpeedIndex = 0;
     private boolean isVoiceModeSwitching;
+    private int currentEpisodeIndex = -1;
+    private boolean collectActionInProgress;
+    private boolean isBottomProgressTracking;
+    private int bottomProgressInSeconds;
+    private int bottomDurationInSeconds;
+    private boolean hasBottomProgressFrame;
+    @Nullable
+    private IndexChooseDialog chooseIndexDialog;
     private interface VoiceModeSwitchCallback {
         void onSwitchApplied(int appliedMode);
 
@@ -177,26 +194,65 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         setContentView(R.layout.act_play);
 
+        playerAreaView = findViewById(R.id.player_area);
+        playBottomActionsView = findViewById(R.id.ll_play_bottom_actions);
         fixedChooseIndexView = findViewById(R.id.ll_choose_index_fixed);
         bottomChooseIndexTitleView = findViewById(R.id.tv_choose_index_title_fixed);
+        playAllView = findViewById(R.id.tv_play_all);
+        bottomProgressBar = findViewById(R.id.sb_play_progress);
+        if (bottomChooseIndexTitleView != null) {
+            bottomChooseIndexTitleView.setText(buildChooseIndexTitle(shortPlay, 1));
+        }
         fixedChooseIndexView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 showChooseIndexDialog();
             }
         });
+        playAllView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                playEpisodeIndex(1);
+            }
+        });
+        bottomProgressBar.setMax(1);
+        bottomProgressBar.setProgress(0);
+        bottomProgressBar.setVisibility(View.GONE);
+        bottomProgressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+                isBottomProgressTracking = true;
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                isBottomProgressTracking = false;
+                if (detailFragment != null) {
+                    detailFragment.setCurrentPlayTimeSeconds(seekBar.getProgress());
+                }
+            }
+        });
 
         View playRoot = findViewById(R.id.play);
         ViewCompat.setOnApplyWindowInsetsListener(playRoot, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
+            v.setPadding(systemBars.left, 0, systemBars.right, 0);
+            lastTopInset = systemBars.top;
             lastBottomInset = systemBars.bottom;
             applyBottomBarsLayout(lastBottomInset);
+            applyTopOverlayInset(lastTopInset);
             return insets;
         });
         ViewCompat.requestApplyInsets(playRoot);
         // Fallback for devices/skins where insets callback may be delayed.
-        playRoot.post(() -> applyBottomBarsLayout(0));
+        playRoot.post(() -> {
+            applyBottomBarsLayout(0);
+            applyTopOverlayInset(0);
+        });
 
         // 妫板嫬濮炴潪鎴掍繆閹垱绁﹂獮鍨啞
         App.ensurePangleAdsSdkInit(getApplicationContext(), () -> {
@@ -242,19 +298,16 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         builder.displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_DESC, false);
         builder.displayTextVisibility(PSSDK.DetailPageConfig.TEXT_POS_BOTTOM_TITLE, false);
         builder.displayProgressBar(false);
+        builder.displayBottomExtraView(false);
+        // Match recommend-page playback: fill horizontally and crop vertically when aspect ratio differs.
+        builder.setVideoDisplayMode(TTVideoEngineInterface.IMAGE_LAYOUT_ASPECT_FILL_X);
         builder.startPlayIndex(startFromIndex);
         builder.enableImmersiveMode(10000) // 閵嗘劕褰查柅澶堚偓鎴炴尡閺€楣冦€夐弮鐘虫惙娴ｆ釜xxms閸氬酣娈ｉ挊蹇旀瀮鐎涙绻橀崗銉︾焽濞寸绱″Ο鈥崇础閿涘矂绮拋銈勭瑝閸氼垳鏁ゅ銈呭閼虫枻绱濋崥顖滄暏閺冭泛褰查幐鍥х暰閺冨爼妫?
                 .playSingleItem(false); // 閵嗘劕褰查柅澶堚偓鎴濆涧閹绢厽鏂佹稉鈧梿鍡樐佸蹇ョ礉閻劋绨崷銊ョ磻閸欐垼鈧懐鏁ゆ径姘嚋閹绢厽鏂佹い绀攔agment鐎电钖勯弸鍕偓鐘崇拨閸斻劌鍨忛崜褍婧€閺咁垱妞傞敍宀勭帛鐠侇槍alse
         // 瀵偓閸氼垵鍤滈崝銊︽尡閺€鍙ョ瑓娑撯偓闂?
         builder.enableAutoPlayNext(true);
         builder.startPlayAtTimeSeconds(startFromSeconds);
-        builder.hideLeftTopCloseAndTitle(false, new PSSDK.ShortPlayDetailPageCloseListener() {
-            @Override
-            public boolean onCloseClicked() {
-                onBackPressed();
-                return true;
-            }
-        });
+        builder.hideLeftTopCloseAndTitle(true, null);
 
         // 闁板秶鐤嗛獮鍨啞缁涙牜鏆?
         builder.adCustomProvider(new PSSDK.AdCustomProvider() {
@@ -311,6 +364,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 if (progressChangeListener != null) {
                     progressChangeListener.onProgressChanged(currentPlayTimeInSeconds, durationInSeconds);
                 }
+                onBottomProgressChanged(currentPlayTimeInSeconds, durationInSeconds);
             }
 
             @Override
@@ -333,6 +387,9 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 // 濮ｅ繋绔撮梿鍡楃磻婵鎸遍弨鐐閸ョ偠鐨熼敍灞藉讲閻劍娼电拋鏉跨秿閹绢厽鏂侀崢鍡楀蕉
                 Logs.i(TAG, "onShortPlayPlayed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
                 DramaPlayActivity.this.shortPlay = shortPlay;
+                currentEpisodeIndex = index;
+                syncCurrentCollectState(shortPlay);
+                markBottomProgressWaitingForFrame();
                 logCurrentVoiceType(shortPlay, "播放回调");
                 if (bottomChooseIndexTitleView != null) {
                     bottomChooseIndexTitleView.setText(buildChooseIndexTitle(shortPlay, index));
@@ -425,53 +482,17 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             public List<View> onObtainPlayerControlViews() {
                 ArrayList<View> views = new ArrayList<>();
 
-                // 閸掑棔闊╅幐澶愭尦
-                CustomShareView shareView = new CustomShareView(getApplicationContext());
-                views.add(shareView);
-                shareView.setImageResource(R.drawable.share);
-                FrameLayout.LayoutParams shareLP = new FrameLayout.LayoutParams(DpUtils.dp2px(getApplicationContext(), 32), DpUtils.dp2px(getApplicationContext(), 32));
-                shareLP.gravity = Gravity.RIGHT | Gravity.BOTTOM;
-                shareLP.bottomMargin = DpUtils.dp2px(getApplicationContext(), 280);
-                shareLP.rightMargin = DpUtils.dp2px(getApplicationContext(), 16);
-                shareView.setLayoutParams(shareLP);
-                shareView.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        Intent intent = new Intent(Intent.ACTION_SEND);
-                        intent.setType("text/plain");
-                        intent.putExtra(Intent.EXTRA_SUBJECT, shortPlay.title);
-                        intent.putExtra(Intent.EXTRA_TEXT, shortPlay.desc);
-                        startActivity(Intent.createChooser(intent, "閸掑棔闊╅惌顓炲⒔"));
-                    }
-                });
-
                 // 閻愮绂愰幐澶愭尦
-                CustomLikeView customLikeView = new CustomLikeView(getApplicationContext());
-                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-                params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-                params.bottomMargin = DpUtils.dp2px(getApplicationContext(), 200);
-                params.rightMargin = DpUtils.dp2px(getApplicationContext(), 16);
-                customLikeView.setLayoutParams(params);
-                views.add(customLikeView);
-
-                // 閺€鎯版閹稿鎸?
-                CustomCollectView collectView = new CustomCollectView(getApplicationContext());
-                params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
-                params.gravity = Gravity.BOTTOM | Gravity.RIGHT;
-                params.bottomMargin = DpUtils.dp2px(getApplicationContext(), 130);
-                params.rightMargin = DpUtils.dp2px(getApplicationContext(), 16);
-                collectView.setLayoutParams(params);
-                views.add(collectView);
 
                 // Loading
-                CustomLoadingView loadingView = new CustomLoadingView(getApplicationContext());
-                FrameLayout.LayoutParams loadingLP = new FrameLayout.LayoutParams(DpUtils.dp2px(getApplicationContext(), 48), DpUtils.dp2px(getApplicationContext(), 48));
+                CustomLoadingView loadingView = new CustomLoadingView(DramaPlayActivity.this);
+                FrameLayout.LayoutParams loadingLP = new FrameLayout.LayoutParams(DpUtils.dp2px(DramaPlayActivity.this, 48), DpUtils.dp2px(DramaPlayActivity.this, 48));
                 loadingLP.gravity = Gravity.CENTER;
                 loadingView.setLayoutParams(loadingLP);
                 views.add(loadingView);
 
                 // 閼奉亜鐣炬稊澶娿亼鐠愩儳鏅棃?
-                CustomErrorView errorView = new CustomErrorView(getApplicationContext());
+                CustomErrorView errorView = new CustomErrorView(DramaPlayActivity.this);
                 errorView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
@@ -481,15 +502,16 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 views.add(errorView);
 
                 // 閼奉亜鐣炬稊澶庣箻鎼达附娼?
-                customOverlayView = new CustomOverlayView(getApplicationContext());
-                params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
-                params.bottomMargin = 0;
-                customOverlayView.setLayoutParams(params);
+                customOverlayView = new CustomOverlayView(DramaPlayActivity.this);
+                FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
+                overlayParams.bottomMargin = 0;
+                customOverlayView.setLayoutParams(overlayParams);
                 customOverlayView.setImmersiveMode(isInImmersiveMode);
                 progressChangeListener = customOverlayView;
                 resolutionChangeListener = customOverlayView;
                 views.add(customOverlayView);
                 applyBottomBarsLayout(lastBottomInset);
+                applyTopOverlayInset(lastTopInset);
                 return views;
             }
         });
@@ -712,18 +734,23 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     }
 
     private void showChooseIndexDialog() {
-        ChooseIndexDialogActivity.start(this, shortPlay, playHistory.index, REQUEST_CODE_CHOOSE_INDEX);
+        if (shortPlay == null || isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+            return;
+        }
+        dismissChooseIndexDialog();
+        chooseIndexDialog = new IndexChooseDialog(this, shortPlay, playHistory.index, new IIndexChooseListener() {
+            @Override
+            public void onChooseIndex(int index) {
+                playEpisodeIndex(index);
+            }
+        });
+        chooseIndexDialog.show();
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_CHOOSE_INDEX && resultCode == RESULT_OK && data != null) {
-            int chooseIndex = ChooseIndexDialogActivity.getChooseIndex(data);
-            if (chooseIndex != -1) {
-                detailFragment.startPlayIndex(chooseIndex);
-            }
-        } else if (requestCode == REQUEST_CODE_CHOOSE_RESOLUTION && resultCode == RESULT_OK && data != null) {
+        if (requestCode == REQUEST_CODE_CHOOSE_RESOLUTION && resultCode == RESULT_OK && data != null) {
             Resolution resolution = ChooseResolutionDialogActivity.getChosenResolution(data);
             if (resolution != null) {
                 currentResolution = resolution;
@@ -734,7 +761,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
     @Override
     public void onChooseIndex(int index) {
-        detailFragment.startPlayIndex(index);
+        playEpisodeIndex(index);
     }
 
     @Override
@@ -745,6 +772,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     @Override
     protected void onPause() {
         super.onPause();
+        dismissChooseIndexDialog();
         Logs.i(TAG, "onPause: ");
     }
 
@@ -757,6 +785,63 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             taskWhenResume.run();
             taskWhenResume = null;
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        dismissChooseIndexDialog();
+        super.onDestroy();
+    }
+
+    private void dismissChooseIndexDialog() {
+        if (chooseIndexDialog != null && chooseIndexDialog.isShowing()) {
+            chooseIndexDialog.dismiss();
+        }
+        chooseIndexDialog = null;
+    }
+
+    private void playEpisodeIndex(int index) {
+        if (detailFragment == null) {
+            return;
+        }
+        int safeIndex = index <= 0 ? 1 : index;
+        playHistory.index = safeIndex;
+        playHistory.seconds = 0;
+        if (shortPlay != null && bottomChooseIndexTitleView != null) {
+            bottomChooseIndexTitleView.setText(buildChooseIndexTitle(shortPlay, safeIndex));
+        }
+        markBottomProgressWaitingForFrame();
+        detailFragment.startPlayIndex(safeIndex);
+    }
+
+    private void onBottomProgressChanged(int progressInSeconds, int durationInSeconds) {
+        bottomProgressInSeconds = Math.max(progressInSeconds, 0);
+        bottomDurationInSeconds = Math.max(durationInSeconds, 0);
+        if (bottomDurationInSeconds > 0) {
+            hasBottomProgressFrame = true;
+        }
+        refreshBottomProgressBarUi();
+    }
+
+    private void markBottomProgressWaitingForFrame() {
+        hasBottomProgressFrame = false;
+        bottomProgressInSeconds = 0;
+        bottomDurationInSeconds = 0;
+        refreshBottomProgressBarUi();
+    }
+
+    private void refreshBottomProgressBarUi() {
+        if (bottomProgressBar == null) {
+            return;
+        }
+        int safeMax = Math.max(bottomDurationInSeconds, 1);
+        if (bottomProgressBar.getMax() != safeMax) {
+            bottomProgressBar.setMax(safeMax);
+        }
+        if (!isBottomProgressTracking) {
+            bottomProgressBar.setProgress(Math.max(0, Math.min(bottomProgressInSeconds, safeMax)));
+        }
+        bottomProgressBar.setVisibility(!isInImmersiveMode && hasBottomProgressFrame ? View.VISIBLE : View.GONE);
     }
 
     private void showChooseResolutionDialog() {
@@ -1000,14 +1085,15 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
     private String buildChooseIndexTitle(@NonNull ShortPlay shortPlay, int index) {
         int currentEpisode = index <= 0 ? 1 : index;
-        int totalEpisodes = shortPlay.total > 0 ? shortPlay.total : (shortPlay.episodes == null ? 0 : shortPlay.episodes.size());
+        int totalEpisodes = shortPlay.total > 0 ? shortPlay.total : (shortPlay.episodes == null ? 1 : shortPlay.episodes.size());
         if (totalEpisodes <= 0) {
-            return "\u9009\u96c6";
+            totalEpisodes = 1;
         }
         if (currentEpisode > totalEpisodes) {
             currentEpisode = totalEpisodes;
         }
-        return "\u9009\u96c6 \u00b7 \u7b2c" + currentEpisode + "\u96c6 \u00b7 \u5168" + totalEpisodes + "\u96c6";
+        String progressLabel = shortPlay.progressState == ShortPlay.PROGRESS_STATE_END ? "\u5df2\u5b8c\u7ed3" : "\u8fde\u8f7d\u4e2d";
+        return "\u7b2c" + currentEpisode + "\u96c6 \u00b7 \u5168" + totalEpisodes + "\u96c6\uff08" + progressLabel + "\uff09";
     }
 
     private void applyCurrentPlaySpeed() {
@@ -1023,24 +1109,44 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
     }
 
+    private void syncCurrentCollectState(@Nullable ShortPlay targetShortPlay) {
+        if (customOverlayView != null) {
+            customOverlayView.bindCollectState(targetShortPlay);
+        }
+    }
+
+    private void applyCollectStateToShortPlay(@Nullable ShortPlay targetShortPlay, boolean isCollected, int totalCollectCount) {
+        if (targetShortPlay != null) {
+            targetShortPlay.isCollected = isCollected;
+            targetShortPlay.totalCollectCount = Math.max(totalCollectCount, 0);
+            ShortUtils.followInsertOrDelete(this, isCollected, targetShortPlay, Math.max(currentEpisodeIndex, 0));
+        }
+        if (customOverlayView != null) {
+            customOverlayView.bindCollectState(shortPlay);
+        }
+    }
+
     private void applyBottomBarsLayout(int bottomInset) {
-        if (fixedChooseIndexView == null) {
+        if (playBottomActionsView == null || playerAreaView == null) {
             return;
         }
-        int fixedBottomGapPx = DpUtils.dp2px(this, FIXED_BOTTOM_BAR_SCREEN_GAP_DP);
-        int fixedBarBottomMarginPx = bottomInset + fixedBottomGapPx;
-        int fixedBarHeightPx = DpUtils.dp2px(this, FIXED_BOTTOM_BAR_HEIGHT_DP);
-        // SDK overlay may already include system insets internally.
-        // Keep overlay controls relative to choose-bar height only, avoid double insets.
-        int progressBottomMarginPx = fixedBarHeightPx + DpUtils.dp2px(this, PROGRESS_TO_CHOOSE_GAP_DP);
-        int briefBottomMarginPx = progressBottomMarginPx + DpUtils.dp2px(this, BRIEF_TO_PROGRESS_GAP_DP);
+        LinearLayout.LayoutParams bottomActionsParams = (LinearLayout.LayoutParams) playBottomActionsView.getLayoutParams();
+        int targetHeight = DpUtils.dp2px(this, FLOATING_BOTTOM_ACTIONS_HEIGHT_DP) + bottomInset;
+        if (bottomActionsParams.height != targetHeight) {
+            bottomActionsParams.height = targetHeight;
+            playBottomActionsView.setLayoutParams(bottomActionsParams);
+        }
+        playBottomActionsView.setPadding(
+                playBottomActionsView.getPaddingLeft(),
+                0,
+                playBottomActionsView.getPaddingRight(),
+                bottomInset
+        );
+    }
 
-        FrameLayout.LayoutParams fixedBarParams = (FrameLayout.LayoutParams) fixedChooseIndexView.getLayoutParams();
-        fixedBarParams.bottomMargin = fixedBarBottomMarginPx;
-        fixedChooseIndexView.setLayoutParams(fixedBarParams);
-
+    private void applyTopOverlayInset(int topInset) {
         if (customOverlayView != null) {
-            customOverlayView.updateBottomLayout(briefBottomMarginPx, progressBottomMarginPx);
+            customOverlayView.updateTopInset(topInset);
         }
     }
 
@@ -1049,9 +1155,10 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (fixedChooseIndexView != null) {
-                    fixedChooseIndexView.setVisibility(immersiveMode ? View.GONE : View.VISIBLE);
+                if (playBottomActionsView != null) {
+                    playBottomActionsView.setVisibility(immersiveMode ? View.INVISIBLE : View.VISIBLE);
                 }
+                refreshBottomProgressBarUi();
                 if (customOverlayView != null) {
                     customOverlayView.setImmersiveMode(immersiveMode);
                 }
@@ -1249,7 +1356,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 //        }
 //    }
 
-    private static class CustomErrorView extends androidx.appcompat.widget.AppCompatTextView implements PSSDK.IControlView {
+    private static class CustomErrorView extends TextView implements PSSDK.IControlView {
 
         public CustomErrorView(Context context) {
             super(context);
@@ -1296,7 +1403,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
     }
 
-    public static class CustomCollectView extends androidx.appcompat.widget.AppCompatTextView implements PSSDK.IControlStatusView {
+    public static class CustomCollectView extends TextView implements PSSDK.IControlStatusView {
         private final Drawable collectDrawable;
         private final Drawable collectedDrawable;
         private PSSDK.ControlStatus status = PSSDK.ControlStatus.Normal;
@@ -1343,7 +1450,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
     }
 
-    public static class CustomLikeView extends androidx.appcompat.widget.AppCompatTextView implements PSSDK.IControlStatusView {
+    public static class CustomLikeView extends TextView implements PSSDK.IControlStatusView {
         private final Drawable likeDrawable;
         private final Drawable likedDrawable;
         private PSSDK.ControlStatus status = PSSDK.ControlStatus.Normal;
@@ -1711,10 +1818,17 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         private class CustomOverlayView extends FrameLayout implements PSSDK.IControlView, DramaPlayActivity.ProgressChangeListener, ResolutionChangeListener {
 
         private final View briefLayout;
+        private final ImageView backIV;
         private final TextView dramaTitleTV;
         private final TextView voiceModeTV;
         private final ImageView dramaCoverIV;
+        private final View rightActionStackLayout;
+        private final View likeActionView;
+        private final ImageView likeIconIV;
+        private final TextView likeTV;
+        private final View speedActionView;
         private final TextView speedTV;
+        private final View resolutionActionView;
         private final TextView resolutionTV;
         private final View speedResolutionMenuLayout;
         private final LinearLayout speedMenuPanel;
@@ -1722,6 +1836,8 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         private final SeekBar progressBar;
         private final int speedResolutionNormalTextColor = Color.parseColor("#CCFFFFFF");
         private final int speedResolutionActiveTextColor = Color.parseColor("#FFF84E40");
+        private final int backButtonBaseTopMarginPx = DpUtils.dp2px(getContext(), 28);
+        private int likeButtonDefaultTextColor;
         private int speedButtonDefaultTextColor;
         private int resolutionButtonDefaultTextColor;
         private static final int MENU_TYPE_NONE = 0;
@@ -1736,9 +1852,16 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         public CustomOverlayView(Context context) {
             super(context);
-            inflate(context, R.layout.player_overlay, this);
+            inflate(context, R.layout.player_overlay_for_play, this);
 
             briefLayout = findViewById(R.id.ll_overlay_brief);
+            backIV = findViewById(R.id.iv_back);
+            backIV.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    DramaPlayActivity.this.onBackPressed();
+                }
+            });
 
             dramaTitleTV = findViewById(R.id.tv_overlay_drama_name);
             voiceModeTV = findViewById(R.id.tv_voice_mode);
@@ -1750,23 +1873,36 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 }
             });
             dramaCoverIV = findViewById(R.id.iv_overlay_cover);
+            rightActionStackLayout = findViewById(R.id.ll_right_action_stack);
+            likeActionView = findViewById(R.id.ll_like_action);
+            likeIconIV = findViewById(R.id.iv_like_icon);
+            likeTV = findViewById(R.id.tv_like);
+            likeButtonDefaultTextColor = likeTV.getCurrentTextColor();
+            likeActionView.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    toggleCollectStatus();
+                }
+            });
+            speedActionView = findViewById(R.id.ll_speed_action);
             speedTV = findViewById(R.id.tv_speed);
             speedButtonDefaultTextColor = speedTV.getCurrentTextColor();
             speedTV.setText(getCurrentPlaySpeedLabel());
-            speedTV.setOnClickListener(new OnClickListener() {
+            speedActionView.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    toggleSpeedResolutionMenu(MENU_TYPE_SPEED, speedTV);
+                    toggleSpeedResolutionMenu(MENU_TYPE_SPEED, speedActionView);
                 }
             });
 
+            resolutionActionView = findViewById(R.id.ll_resolution_action);
             resolutionTV = findViewById(R.id.tv_resolution);
             resolutionButtonDefaultTextColor = resolutionTV.getCurrentTextColor();
             resolutionTV.setText(getResolutionButtonText(currentResolution));
-            resolutionTV.setOnClickListener(new OnClickListener() {
+            resolutionActionView.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    toggleSpeedResolutionMenu(MENU_TYPE_RESOLUTION, resolutionTV);
+                    toggleSpeedResolutionMenu(MENU_TYPE_RESOLUTION, resolutionActionView);
                 }
             });
 
@@ -1796,6 +1932,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             if (progressDrawable != null) {
                 progressBar.setProgressDrawable(progressDrawable);
             }
+            progressBar.setVisibility(View.GONE);
             progressBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
 
                 @Override
@@ -1833,6 +1970,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             Glide.with(getContext())
                     .load(shortPlay.coverImage)
                     .into(dramaCoverIV);
+            bindCollectState(shortPlay);
             speedTV.setText(getCurrentPlaySpeedLabel());
             resolutionTV.setText(getResolutionButtonText(currentResolution));
             voiceModeTV.setText(VoiceModeHelper.getModeLabel(VoiceModeHelper.getMode(getContext())));
@@ -1840,6 +1978,55 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             refreshSpeedMenuItems();
             setExpandedMenuType(MENU_TYPE_NONE);
             applyImmersiveModeVisibility();
+        }
+
+        void bindCollectState(@Nullable ShortPlay targetShortPlay) {
+            boolean isCollected = targetShortPlay != null && targetShortPlay.isCollected;
+            likeIconIV.setImageResource(isCollected ? R.drawable.liked : R.drawable.like);
+            likeTV.setText("收藏");
+            likeTV.setTextColor(isCollected ? speedResolutionActiveTextColor : likeButtonDefaultTextColor);
+            boolean hasCollectTarget = targetShortPlay != null;
+            likeActionView.setEnabled(hasCollectTarget && !collectActionInProgress);
+            likeActionView.setAlpha(likeActionView.isEnabled() ? 1f : 0.6f);
+        }
+
+        private void toggleCollectStatus() {
+            final ShortPlay currentShortPlay = DramaPlayActivity.this.shortPlay;
+            if (currentShortPlay == null) {
+                toast("当前短剧收藏信息未准备好");
+                return;
+            }
+            if (collectActionInProgress) {
+                return;
+            }
+            final boolean targetCollected = !currentShortPlay.isCollected;
+            final int targetCollectCount = Math.max(0, currentShortPlay.totalCollectCount + (targetCollected ? 1 : -1));
+            collectActionInProgress = true;
+            bindCollectState(currentShortPlay);
+            PSSDK.setCollected(currentShortPlay.id, targetCollected, new PSSDK.ActionResultListener() {
+                @Override
+                public void onSuccess() {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            collectActionInProgress = false;
+                            applyCollectStateToShortPlay(currentShortPlay, targetCollected, targetCollectCount);
+                        }
+                    });
+                }
+
+                @Override
+                public void onFail(PSSDK.ErrorInfo errorInfo) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            collectActionInProgress = false;
+                            bindCollectState(DramaPlayActivity.this.shortPlay);
+                            toast("收藏失败，请稍后重试");
+                        }
+                    });
+                }
+            });
         }
 
         private void showVoiceModeDialog() {
@@ -1912,6 +2099,29 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 //            ivHd.setVisibility(resolutionString.contains("1080") ? View.VISIBLE : View.GONE);
         }
 
+        void updateTopInset(int topInset) {
+            int safeTopInset = Math.max(topInset, 0);
+            int backTopMargin = safeTopInset + backButtonBaseTopMarginPx;
+            int menuTopMargin = safeTopInset + DpUtils.dp2px(getContext(), 16);
+
+            FrameLayout.LayoutParams backParams = (FrameLayout.LayoutParams) backIV.getLayoutParams();
+            if (backParams.topMargin != backTopMargin) {
+                backParams.topMargin = backTopMargin;
+                backIV.setLayoutParams(backParams);
+            }
+
+            FrameLayout.LayoutParams menuParams = (FrameLayout.LayoutParams) speedResolutionMenuLayout.getLayoutParams();
+            if (currentExpandedMenuType == MENU_TYPE_NONE) {
+                if (menuParams.topMargin != menuTopMargin) {
+                    menuParams.topMargin = menuTopMargin;
+                    speedResolutionMenuLayout.setLayoutParams(menuParams);
+                }
+            } else if (menuParams.topMargin < menuTopMargin) {
+                menuParams.topMargin = menuTopMargin;
+                speedResolutionMenuLayout.setLayoutParams(menuParams);
+            }
+        }
+
         void setImmersiveMode(boolean immersiveMode) {
             isImmersiveMode = immersiveMode;
             if (immersiveMode) {
@@ -1922,8 +2132,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         private void applyImmersiveModeVisibility() {
             int visibility = isImmersiveMode ? View.GONE : View.VISIBLE;
-            speedTV.setVisibility(visibility);
-            resolutionTV.setVisibility(visibility);
+            rightActionStackLayout.setVisibility(visibility);
             briefLayout.setVisibility(visibility);
         }
 
@@ -1964,9 +2173,10 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         private void updateMenuPosition(@NonNull View anchorView) {
             View parentView = (View) speedResolutionMenuLayout.getParent();
-            if (parentView == null) {
+            if (!(parentView instanceof ViewGroup)) {
                 return;
             }
+            ViewGroup parentGroup = (ViewGroup) parentView;
             FrameLayout.LayoutParams menuLayoutParams = (FrameLayout.LayoutParams) speedResolutionMenuLayout.getLayoutParams();
             menuLayoutParams.gravity = Gravity.TOP | Gravity.RIGHT;
             int menuWidth = speedResolutionMenuLayout.getWidth();
@@ -1976,12 +2186,18 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             if (menuWidth <= 0) {
                 menuWidth = DpUtils.dp2px(getContext(), currentExpandedMenuType == MENU_TYPE_SPEED ? 56 : 70);
             }
-            int anchorCenterX = anchorView.getLeft() + anchorView.getWidth() / 2;
-            int desiredMenuLeft = anchorCenterX - menuWidth / 2;
-            int maxLeft = Math.max(0, parentView.getWidth() - menuWidth);
-            int clampedLeft = Math.max(0, Math.min(desiredMenuLeft, maxLeft));
-            menuLayoutParams.topMargin = anchorView.getBottom() + DpUtils.dp2px(getContext(), 6);
-            menuLayoutParams.rightMargin = Math.max(0, parentView.getWidth() - (clampedLeft + menuWidth));
+            int menuHeight = speedResolutionMenuLayout.getHeight();
+            if (menuHeight <= 0) {
+                menuHeight = speedResolutionMenuLayout.getMeasuredHeight();
+            }
+            Rect anchorRect = new Rect();
+            anchorView.getDrawingRect(anchorRect);
+            parentGroup.offsetDescendantRectToMyCoords(anchorView, anchorRect);
+            int horizontalGap = DpUtils.dp2px(getContext(), 10);
+            int desiredTop = anchorRect.centerY() - menuHeight / 2;
+            int maxTop = Math.max(lastTopInset + DpUtils.dp2px(getContext(), 16), parentView.getHeight() - menuHeight);
+            menuLayoutParams.topMargin = Math.max(lastTopInset + DpUtils.dp2px(getContext(), 16), Math.min(desiredTop, maxTop));
+            menuLayoutParams.rightMargin = Math.max(0, parentView.getWidth() - anchorRect.left + horizontalGap);
             speedResolutionMenuLayout.setLayoutParams(menuLayoutParams);
         }
 

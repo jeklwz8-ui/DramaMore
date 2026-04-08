@@ -1,44 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/play"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black">
+    android:background="@android:color/black"
+    android:orientation="vertical">
 
     <FrameLayout
-        android:id="@+id/fragment_container"
+        android:id="@+id/player_area"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <FrameLayout
+            android:id="@+id/fragment_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <SeekBar
+            android:id="@+id/sb_play_progress"
+            android:layout_width="match_parent"
+            android:layout_height="15dp"
+            android:layout_gravity="bottom"
+            android:layout_marginLeft="12dp"
+            android:layout_marginRight="12dp"
+            android:layout_marginBottom="-2dp"
+            android:maxHeight="2dp"
+            android:minHeight="4dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:progressDrawable="@drawable/custom_seekbar_track"
+            android:splitTrack="false"
+            android:thumb="@drawable/custom_thumb"
+            android:thumbOffset="0dp"
+            android:visibility="gone" />
+    </FrameLayout>
 
     <LinearLayout
-        android:id="@+id/ll_choose_index_fixed"
+        android:id="@+id/ll_play_bottom_actions"
         android:layout_width="match_parent"
-        android:layout_height="32dp"
-        android:layout_gravity="bottom"
-        android:layout_marginLeft="12dp"
-        android:layout_marginRight="12dp"
-        android:layout_marginBottom="0dp"
-        android:background="@drawable/bg_black_round_2dp"
+        android:layout_height="56dp"
+        android:background="#FF000000"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingLeft="12dp"
         android:paddingRight="12dp">
 
-        <TextView
-            android:id="@+id/tv_choose_index_title_fixed"
+        <LinearLayout
+            android:id="@+id/ll_choose_index_fixed"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="32dp"
             android:layout_weight="1"
-            android:alpha="0.95"
+            android:background="@drawable/bg_black_round_2dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingLeft="12dp"
+            android:paddingRight="12dp">
+
+            <TextView
+                android:id="@+id/tv_choose_index_title_fixed"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:alpha="0.95"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@android:color/white"
+                android:textSize="12sp" />
+
+            <ImageView
+                android:layout_width="14dp"
+                android:layout_height="8dp"
+                android:rotation="180"
+                android:src="@drawable/arrow_down"
+                app:tint="#CCFFFFFF" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_play_all"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginLeft="8dp"
+            android:background="@drawable/bg_black_round_2dp"
+            android:drawableStart="@drawable/play_n"
+            android:drawablePadding="4dp"
+            android:gravity="center"
+            android:paddingLeft="12dp"
+            android:paddingRight="12dp"
+            android:text="播全集"
             android:textColor="@android:color/white"
-            android:textSize="12sp" />
-
-        <ImageView
-            android:layout_width="14dp"
-            android:layout_height="8dp"
-            android:rotation="180"
-            android:src="@drawable/arrow_down"
-            android:tint="#CCFFFFFF" />
+            android:textSize="14sp" />
     </LinearLayout>
-
-</FrameLayout>
+</LinearLayout>

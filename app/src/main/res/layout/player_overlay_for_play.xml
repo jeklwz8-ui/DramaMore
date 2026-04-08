@@ -1,41 +1,110 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/tv_speed"
+    <ImageView
+        android:id="@+id/iv_back"
         android:layout_width="wrap_content"
-        android:layout_height="28dp"
-        android:layout_gravity="right|top"
+        android:layout_height="wrap_content"
+        android:layout_gravity="left|top"
+        android:layout_marginLeft="12dp"
         android:layout_marginTop="20dp"
-        android:layout_marginRight="90dp"
-        android:background="@drawable/bg_black_round_2dp"
-        android:drawableStart="@drawable/beis_selector"
-        android:drawablePadding="4dp"
-        android:gravity="center"
-        android:paddingLeft="8dp"
-        android:paddingRight="8dp"
-        android:text="1.0X"
-        android:textColor="@android:color/white"
-        android:textSize="12sp" />
+        android:padding="6dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_back" />
 
-    <TextView
-        android:id="@+id/tv_resolution"
+    <LinearLayout
+        android:id="@+id/ll_right_action_stack"
         android:layout_width="wrap_content"
-        android:layout_height="28dp"
-        android:layout_gravity="right|top"
-        android:layout_marginTop="20dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="right|bottom"
         android:layout_marginRight="16dp"
-        android:background="@drawable/bg_black_round_2dp"
-        android:drawableStart="@drawable/res_selector"
-        android:drawablePadding="4dp"
-        android:gravity="center"
-        android:paddingLeft="8dp"
-        android:paddingRight="8dp"
-        android:text="1080P"
-        android:textColor="@color/res_text_color"
-        android:textSize="12sp" />
+        android:layout_marginBottom="104dp"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/ll_like_action"
+            android:layout_width="52dp"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp">
+
+            <ImageView
+                android:id="@+id/iv_like_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/like" />
+
+            <TextView
+                android:id="@+id/tv_like"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:text="点赞"
+                android:textColor="@android:color/white"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/ll_speed_action"
+            android:layout_width="66dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/beis_selector" />
+
+            <TextView
+                android:id="@+id/tv_speed"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:text="1.0X"
+                android:textColor="@android:color/white"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/ll_resolution_action"
+            android:layout_width="66dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/res_selector" />
+
+            <TextView
+                android:id="@+id/tv_resolution"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:includeFontPadding="false"
+                android:text="1080P"
+                android:textColor="@android:color/white"
+                android:textSize="10sp" />
+        </LinearLayout>
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/ll_speed_resolution_menu"
@@ -111,7 +180,8 @@
             android:paddingEnd="8dp"
             android:text="不限"
             android:textColor="@android:color/white"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <SeekBar

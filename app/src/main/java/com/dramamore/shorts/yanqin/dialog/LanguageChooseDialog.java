@@ -20,15 +20,16 @@ import androidx.fragment.app.DialogFragment;
 
 import com.bytedance.sdk.shortplay.api.PSSDK;
 import com.dramamore.shorts.yanqin.R;
+import com.dramamore.shorts.yanqin.utils.ContentLanguageHelper;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class LanguageChooseDialog extends DialogFragment {
-    private static final HashMap<String, String> languageDisplayNames = new HashMap<>();
+    private static final LinkedHashMap<String, String> languageDisplayNames = new LinkedHashMap<>();
 
     public void initLangStr(){
         languageDisplayNames.put("zh_hans", getString(R.string.s_zh_hans));
@@ -85,7 +86,7 @@ public class LanguageChooseDialog extends DialogFragment {
 
         GridLayout gridLayout = view.findViewById(R.id.gl_choices);
 
-        List<String> currentSetLanguage = PSSDK.getContentLanguages();
+        String currentSetLanguage = ContentLanguageHelper.getSelectedContentLanguage();
         for (Map.Entry<String, String> entry : languageDisplayNames.entrySet()) {
             CheckBox checkBox = new CheckBox(view.getContext());
             checkBox.setText(entry.getKey() + "/" + entry.getValue());
@@ -94,9 +95,8 @@ public class LanguageChooseDialog extends DialogFragment {
             checkBox.setButtonDrawable(null);
             checkBox.setBackground(getResources().getDrawable(R.drawable.bg_lang_round));
             checkBox.setPadding(20, 30, 20, 30);
-            if (currentSetLanguage != null) {
-                checkBox.setSelected(currentSetLanguage.contains(entry.getKey()));
-            }
+            checkBox.setChecked(entry.getKey().equals(currentSetLanguage));
+            checkBox.setOnClickListener(v -> selectLanguage(checkBox));
 //            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
 
             // 3. 关键：设置 LayoutParams 确保平分宽度
@@ -125,17 +125,29 @@ public class LanguageChooseDialog extends DialogFragment {
             @Override
             public void onClick(View v) {
                 List<String> checkedData = new ArrayList<>();
-                for (CheckBox checkBox : checkBoxes) {
-                    if (checkBox.isChecked()) {
-                        checkedData.add((String) checkBox.getTag());
-                    }
-                }
+                checkedData.add(getCheckedLanguage());
                 if (languageChangeListener != null) {
                     languageChangeListener.onContentLanguageChanged(checkedData);
                 }
                 dismiss();
             }
         });
+    }
+
+    private void selectLanguage(@NonNull CheckBox selectedCheckBox) {
+        for (CheckBox checkBox : checkBoxes) {
+            checkBox.setChecked(checkBox == selectedCheckBox);
+        }
+    }
+
+    @NonNull
+    private String getCheckedLanguage() {
+        for (CheckBox checkBox : checkBoxes) {
+            if (checkBox.isChecked()) {
+                return (String) checkBox.getTag();
+            }
+        }
+        return ContentLanguageHelper.DEFAULT_LANGUAGE;
     }
 
     public void setLanguageChangeListener(ContentLanguageChangeListener languageChangeListener) {

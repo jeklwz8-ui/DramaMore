@@ -173,6 +173,9 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
             }
             if (voiceDataList != null) {
+                boolean hasVoiceData = !voiceDataList.isEmpty();
+                headerViewHolder.voiceSectionHeader.setVisibility(hasVoiceData ? View.VISIBLE : View.GONE);
+                headerViewHolder.llVoice.setVisibility(hasVoiceData ? View.VISIBLE : View.GONE);
                 for (int i = 0; i < voiceDataList.size(); i++) {
                     ShortPlay shortPlay = voiceDataList.get(i);
                     View childAt = headerViewHolder.llVoice.getChildAt(i);
@@ -225,6 +228,9 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
             }
             if (cartoonDataList != null) {
+                boolean hasCartoonData = !cartoonDataList.isEmpty();
+                headerViewHolder.cartoonSectionHeader.setVisibility(hasCartoonData ? View.VISIBLE : View.GONE);
+                headerViewHolder.llCartoon.setVisibility(hasCartoonData ? View.VISIBLE : View.GONE);
                 for (int i = 0; i < cartoonDataList.size(); i++) {
                     ShortPlay shortPlay = cartoonDataList.get(i);
                     View childAt = headerViewHolder.llCartoon.getChildAt(i);
@@ -307,6 +313,8 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         TextView tvBannerTitle;
         ImageView ivBannerBgBlur;
         FrameLayout flSearch;
+        View voiceSectionHeader;
+        View cartoonSectionHeader;
         BannerManager bannerManager;
 
         public HeaderViewHolder(@NonNull View itemView) {
@@ -322,12 +330,14 @@ public class HomeAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             llHot = itemView.findViewById(R.id.ll_hot);
             tvHotMore = itemView.findViewById(R.id.tv_hot_more);
 
+            voiceSectionHeader = itemView.findViewById(R.id.fl_voice_section);
             llVoice = itemView.findViewById(R.id.ll_voice);
             tvVoiceMore = itemView.findViewById(R.id.tv_voice_more);
 
             llMost = itemView.findViewById(R.id.ll_most);
             tvMostMore = itemView.findViewById(R.id.tv_most_more);
 
+            cartoonSectionHeader = itemView.findViewById(R.id.fl_cartoon_section);
             llCartoon = itemView.findViewById(R.id.ll_cartoon);
             tvCartoonMore = itemView.findViewById(R.id.tv_cartoon_more);
         }

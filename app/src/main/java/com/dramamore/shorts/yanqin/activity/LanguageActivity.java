@@ -15,14 +15,15 @@ import androidx.core.view.WindowInsetsCompat;
 import com.bytedance.sdk.shortplay.api.PSSDK;
 import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.dialog.LanguageChooseDialog;
+import com.dramamore.shorts.yanqin.utils.ContentLanguageHelper;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class LanguageActivity extends AppCompatActivity {
-    private static final HashMap<String, String> languageDisplayNames = new HashMap<>();
+    private static final LinkedHashMap<String, String> languageDisplayNames = new LinkedHashMap<>();
 
     static {
         languageDisplayNames.put("zh_hans", "简体中文");
@@ -55,16 +56,15 @@ public class LanguageActivity extends AppCompatActivity {
     private void initView() {
         LinearLayout languageList = findViewById(R.id.ll_choices);
 
-        List<String> currentSetLanguage = PSSDK.getContentLanguages();
+        String currentSetLanguage = ContentLanguageHelper.getSelectedContentLanguage();
         for (Map.Entry<String, String> entry : languageDisplayNames.entrySet()) {
             CheckBox checkBox = new CheckBox(this);
             checkBox.setText(entry.getKey() + "/" + entry.getValue());
             checkBox.setTag(entry.getKey());
             checkBox.setTextColor(Color.BLACK);
             checkBox.setPadding(0, 30, 0, 30);
-            if (currentSetLanguage != null) {
-                checkBox.setChecked(currentSetLanguage.contains(entry.getKey()));
-            }
+            checkBox.setChecked(entry.getKey().equals(currentSetLanguage));
+            checkBox.setOnClickListener(v -> selectLanguage(checkBox));
             languageList.addView(checkBox, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
             checkBoxes.add(checkBox);
         }
@@ -73,16 +73,29 @@ public class LanguageActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 List<String> checkedData = new ArrayList<>();
-                for (CheckBox checkBox : checkBoxes) {
-                    if (checkBox.isChecked()) {
-                        checkedData.add((String) checkBox.getTag());
-                    }
-                }
+                checkedData.add(getCheckedLanguage());
                 if (languageChangeListener != null) {
                     languageChangeListener.onContentLanguageChanged(checkedData);
+                } else {
+                    PSSDK.setContentLanguages(checkedData);
                 }
                 finish();
             }
         });
+    }
+
+    private void selectLanguage(CheckBox selectedCheckBox) {
+        for (CheckBox checkBox : checkBoxes) {
+            checkBox.setChecked(checkBox == selectedCheckBox);
+        }
+    }
+
+    private String getCheckedLanguage() {
+        for (CheckBox checkBox : checkBoxes) {
+            if (checkBox.isChecked()) {
+                return (String) checkBox.getTag();
+            }
+        }
+        return ContentLanguageHelper.DEFAULT_LANGUAGE;
     }
 }

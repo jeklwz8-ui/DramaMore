@@ -13,6 +13,7 @@ import com.anythink.core.api.ATSDK;
 import com.bytedance.sdk.openadsdk.api.init.PAGConfig;
 import com.bytedance.sdk.openadsdk.api.init.PAGSdk;
 import com.bytedance.sdk.shortplay.api.PSSDK;
+import com.dramamore.shorts.yanqin.utils.ContentLanguageHelper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +53,9 @@ public class App extends Application {
             @Override
             public void onInitFinished(boolean success, PSSDK.ErrorInfo errorInfo) {
                 Log.d(TAG, "onInitFinished() called with: success = [" + success + "], errorInfo = [" + errorInfo + "]");
+                if (success) {
+                    ContentLanguageHelper.ensureDefaultContentLanguage();
+                }
             }
         });
 

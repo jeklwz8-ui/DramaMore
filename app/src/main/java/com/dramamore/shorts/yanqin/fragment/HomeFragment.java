@@ -29,6 +29,7 @@ import java.util.List;
 import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.adapter.GridSpacingItemDecoration;
 import com.dramamore.shorts.yanqin.adapter.HomeAdapter;
+import com.dramamore.shorts.yanqin.utils.ContentLanguageHelper;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
 import com.dramamore.shorts.yanqin.utils.VoiceModeHelper;
@@ -39,12 +40,12 @@ public class HomeFragment extends Fragment {
     private static final String TAG = "HomeFragment";
     private static final long UI_REFRESH_DELAY_MS = 2000L;
     private static final long HEADER_REQUEST_DELAY_MS = 300L;
-    private static final String CACHE_HOME_FEED = "cache_home_feed";
-    private static final String CACHE_HOME_BANNER = "cache_home_banner";
-    private static final String CACHE_HOME_HOT = "cache_home_hot";
-    private static final String CACHE_HOME_VOICE = "cache_home_voice";
-    private static final String CACHE_HOME_MOST = "cache_home_most";
-    private static final String CACHE_HOME_CARTOON = "cache_home_cartoon";
+    private static final String CACHE_HOME_FEED_PREFIX = "cache_home_feed_";
+    private static final String CACHE_HOME_BANNER_PREFIX = "cache_home_banner_";
+    private static final String CACHE_HOME_HOT_PREFIX = "cache_home_hot_";
+    private static final String CACHE_HOME_VOICE_PREFIX = "cache_home_voice_";
+    private static final String CACHE_HOME_MOST_PREFIX = "cache_home_most_";
+    private static final String CACHE_HOME_CARTOON_PREFIX = "cache_home_cartoon_";
     private static final Type SHORT_PLAY_LIST_TYPE = new TypeToken<List<ShortPlay>>() {}.getType();
     private final Gson gson = new Gson();
    /* private ViewPager2 bannerPager;
@@ -83,6 +84,23 @@ public class HomeFragment extends Fragment {
         SPUtils.getInstance(getContext()).putString(key, gson.toJson(list));
     }
 
+    private void clearShortPlayListCache(String key) {
+        if (getContext() == null) {
+            return;
+        }
+        SPUtils.getInstance(getContext()).remove(key);
+    }
+
+    @NonNull
+    private String getVoiceCacheKey() {
+        return CACHE_HOME_VOICE_PREFIX + VoiceDramaRequestHelper.getSelectedVoiceLanguageCacheSuffix();
+    }
+
+    @NonNull
+    private String getContentCacheKey(@NonNull String keyPrefix) {
+        return keyPrefix + ContentLanguageHelper.getSelectedContentLanguage();
+    }
+
     @Nullable
     private List<ShortPlay> readCachedShortPlayList(String key) {
         if (getContext() == null) {
@@ -103,12 +121,12 @@ public class HomeFragment extends Fragment {
         if (adapter == null || adapter.getItemCount() > 0) {
             return;
         }
-        List<ShortPlay> feedCache = readCachedShortPlayList(CACHE_HOME_FEED);
-        List<ShortPlay> bannerCache = readCachedShortPlayList(CACHE_HOME_BANNER);
-        List<ShortPlay> hotCache = readCachedShortPlayList(CACHE_HOME_HOT);
-        List<ShortPlay> voiceCache = readCachedShortPlayList(CACHE_HOME_VOICE);
-        List<ShortPlay> mostCache = readCachedShortPlayList(CACHE_HOME_MOST);
-        List<ShortPlay> cartoonCache = readCachedShortPlayList(CACHE_HOME_CARTOON);
+        List<ShortPlay> feedCache = readCachedShortPlayList(getContentCacheKey(CACHE_HOME_FEED_PREFIX));
+        List<ShortPlay> bannerCache = readCachedShortPlayList(getContentCacheKey(CACHE_HOME_BANNER_PREFIX));
+        List<ShortPlay> hotCache = readCachedShortPlayList(getContentCacheKey(CACHE_HOME_HOT_PREFIX));
+        List<ShortPlay> voiceCache = readCachedShortPlayList(getVoiceCacheKey());
+        List<ShortPlay> mostCache = readCachedShortPlayList(getContentCacheKey(CACHE_HOME_MOST_PREFIX));
+        List<ShortPlay> cartoonCache = readCachedShortPlayList(getContentCacheKey(CACHE_HOME_CARTOON_PREFIX));
 
         boolean hasHeaderCache = (bannerCache != null && !bannerCache.isEmpty())
                 || (hotCache != null && !hotCache.isEmpty())
@@ -168,7 +186,8 @@ public class HomeFragment extends Fragment {
     }
 
     private void initVoiceData() {
-        VoiceDramaRequestHelper.requestVoiceDramaByIp(requireContext().getApplicationContext(), 1, 3, new PSSDK.FeedListResultListener() {
+        final String voiceCacheKey = getVoiceCacheKey();
+        boolean requestStarted = VoiceDramaRequestHelper.requestVoiceDramaBySelectedLanguages(1, 3, new PSSDK.FeedListResultListener() {
             @Override
             public void onFail(PSSDK.ErrorInfo errorInfo) {
                 Logs.i(TAG, "initVoiceData-onFail-errorInfo=" + errorInfo);
@@ -180,16 +199,34 @@ public class HomeFragment extends Fragment {
                 Logs.i(TAG, "initVoiceData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString());
                 isInitVoiceData = true;
                 postToUiIfAlive(() -> {
-                    cacheShortPlayList(CACHE_HOME_VOICE, feedListLoadResult.dataList);
+                    List<ShortPlay> voiceData = feedListLoadResult == null || feedListLoadResult.dataList == null
+                            ? Collections.emptyList()
+                            : feedListLoadResult.dataList;
+                    if (voiceData.isEmpty()) {
+                        clearShortPlayListCache(voiceCacheKey);
+                    } else {
+                        cacheShortPlayList(voiceCacheKey, voiceData);
+                    }
                     if (adapter != null) {
-                        adapter.setHeaderVoiceData(feedListLoadResult.dataList);
+                        adapter.setHeaderVoiceData(voiceData);
                     }
                 });
             }
         });
+        if (!requestStarted) {
+            Logs.i(TAG, "initVoiceData-skip: selected language is empty");
+            isInitVoiceData = true;
+            clearShortPlayListCache(voiceCacheKey);
+            postToUiIfAlive(() -> {
+                if (adapter != null) {
+                    adapter.setHeaderVoiceData(Collections.emptyList());
+                }
+            });
+        }
     }
 
     private void initBannerData() {
+        final String bannerCacheKey = getContentCacheKey(CACHE_HOME_BANNER_PREFIX);
         PSSDK.requestNewDrama(1, 5, new PSSDK.FeedListResultListener() {
             @Override
             public void onFail(PSSDK.ErrorInfo errorInfo) {
@@ -201,7 +238,7 @@ public class HomeFragment extends Fragment {
                 Logs.i(TAG, "initNewData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString() + ",size=" + feedListLoadResult.dataList.size());
                 isInitBannerData = true;
                 postToUiIfAlive(() -> {
-                    cacheShortPlayList(CACHE_HOME_BANNER, feedListLoadResult.dataList);
+                    cacheShortPlayList(bannerCacheKey, feedListLoadResult.dataList);
                     if (adapter != null) {
                         adapter.setHeaderBannerData(feedListLoadResult.dataList);
                     }
@@ -211,6 +248,7 @@ public class HomeFragment extends Fragment {
     }
 
     private void initHotData() {
+        final String hotCacheKey = getContentCacheKey(CACHE_HOME_HOT_PREFIX);
         PSSDK.requestPopularDrama(1, 3, Arrays.asList(5L), new PSSDK.FeedListResultListener() {
             @Override
             public void onFail(PSSDK.ErrorInfo errorInfo) {
@@ -225,7 +263,7 @@ public class HomeFragment extends Fragment {
                 Logs.i(TAG, "initHotData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString());
                 isInitHotData = true;
                 postToUiIfAlive(() -> {
-                    cacheShortPlayList(CACHE_HOME_HOT, feedListLoadResult.dataList);
+                    cacheShortPlayList(hotCacheKey, feedListLoadResult.dataList);
                     if (adapter != null) {
                         adapter.setHeaderHotData(feedListLoadResult.dataList);
                     }
@@ -239,6 +277,7 @@ public class HomeFragment extends Fragment {
 
     //近期最多收藏
     private void initMostData() {
+        final String mostCacheKey = getContentCacheKey(CACHE_HOME_MOST_PREFIX);
         PSSDK.requestDramaByTag(4, 1, 3, new PSSDK.FeedListResultListener() {
             @Override
             public void onFail(PSSDK.ErrorInfo errorInfo) {
@@ -250,7 +289,7 @@ public class HomeFragment extends Fragment {
                 Logs.i(TAG, "initMostData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString());
                 isInitMostData = true;
                 postToUiIfAlive(() -> {
-                    cacheShortPlayList(CACHE_HOME_MOST, feedListLoadResult.dataList);
+                    cacheShortPlayList(mostCacheKey, feedListLoadResult.dataList);
                     if (adapter != null) {
                         adapter.setHeaderMostData(feedListLoadResult.dataList);
                     }
@@ -261,6 +300,7 @@ public class HomeFragment extends Fragment {
 
     //动漫剧
     private void initCartoonData() {
+        final String cartoonCacheKey = getContentCacheKey(CACHE_HOME_CARTOON_PREFIX);
         PSSDK.requestFeedListByCategoryIds(Arrays.asList(1000701l), null, 1, 3, new PSSDK.FeedListResultListener() {
             @Override
             public void onFail(PSSDK.ErrorInfo errorInfo) {
@@ -272,9 +312,16 @@ public class HomeFragment extends Fragment {
                 Logs.i(TAG, "initCartoonData-onSuccess-feedListLoadResult=" + feedListLoadResult.toString());
                 isInitCartoonData = true;
                 postToUiIfAlive(() -> {
-                    cacheShortPlayList(CACHE_HOME_CARTOON, feedListLoadResult.dataList);
+                    List<ShortPlay> cartoonData = feedListLoadResult == null || feedListLoadResult.dataList == null
+                            ? Collections.emptyList()
+                            : feedListLoadResult.dataList;
+                    if (cartoonData.isEmpty()) {
+                        clearShortPlayListCache(cartoonCacheKey);
+                    } else {
+                        cacheShortPlayList(cartoonCacheKey, cartoonData);
+                    }
                     if (adapter != null) {
-                        adapter.setHeaderCartoonData(feedListLoadResult.dataList);
+                        adapter.setHeaderCartoonData(cartoonData);
                     }
                 });
             }
@@ -364,6 +411,7 @@ public class HomeFragment extends Fragment {
 
     private void loadMoreData() {
         isLoading = true;
+        final String feedCacheKey = getContentCacheKey(CACHE_HOME_FEED_PREFIX);
         List<Long> list = Arrays.asList(1l, 2l, 4l, 5l, 6l, 7l, 8l, 11l, 12l, 13l, 14l, 1701l, 1702l, 1704l, 1706l, 1709l, 1751l, 1851l, 1901l, 1902l, 1951l, 1952l, 1953l, 1954l);
 //        PSSDK.requestFeedListByCategoryIds(list,null,currentPage,20,new PSSDK.FeedListResultListener() {
         PSSDK.requestFeedList(currentPage, 20, new PSSDK.FeedListResultListener() {
@@ -375,9 +423,18 @@ public class HomeFragment extends Fragment {
                     isLoading = false;
                     int voiceMode = VoiceModeHelper.getMode(requireContext());
                     List<ShortPlay> finalList = VoiceModeHelper.filter(result.dataList, voiceMode);
-                    if (adapter != null && finalList != null && !finalList.isEmpty()) {
+                    if (adapter == null) {
+                        return;
+                    }
+                    if (currentPage == 1 && (finalList == null || finalList.isEmpty())) {
+                        clearShortPlayListCache(feedCacheKey);
+                        hasMore = false;
+                        setFirstPageDataKeepingScroll(Collections.emptyList());
+                        return;
+                    }
+                    if (finalList != null && !finalList.isEmpty()) {
                         if (currentPage == 1) {
-                            cacheShortPlayList(CACHE_HOME_FEED, finalList);
+                            cacheShortPlayList(feedCacheKey, finalList);
                         }
                         hasMore = result.hasMore;//更多
                         if (result.hasMore) {

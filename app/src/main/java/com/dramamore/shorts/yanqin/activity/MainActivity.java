@@ -1,9 +1,15 @@
 package com.dramamore.shorts.yanqin.activity;
 
+import android.Manifest;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
+import android.content.pm.PackageManager;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
@@ -23,6 +29,9 @@ import com.dramamore.shorts.yanqin.utils.Logs;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG="MainActivity";
     private Fragment homeFragment, recommendFragment, followFragment, profileFragment;
+    private final ActivityResultLauncher<String> notificationPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted ->
+                    Logs.i(TAG, "notification permission result=" + isGranted));
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,7 +49,21 @@ public class MainActivity extends AppCompatActivity {
         navView.setOnApplyWindowInsetsListener(null);
         navView.setPadding(0, 0, 0, 0);
 
+        requestNotificationPermissionIfNeeded();
         initFragment();
+    }
+
+    private void requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            Logs.i(TAG, "requestNotificationPermissionIfNeeded-skip: Android 12 and below do not require runtime notification permission");
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            Logs.i(TAG, "requestNotificationPermissionIfNeeded-skip: already granted");
+            return;
+        }
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
     }
 
     private void initFragment() {

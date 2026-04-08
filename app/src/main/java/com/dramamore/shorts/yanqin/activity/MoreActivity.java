@@ -22,6 +22,7 @@ import com.bytedance.sdk.shortplay.api.PSSDK;
 import com.bytedance.sdk.shortplay.api.ShortPlay;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.adapter.MoreGridSpacingItemDecoration;
@@ -125,7 +126,15 @@ public class MoreActivity extends AppCompatActivity {
         }else if(type==3){//动漫短剧
             PSSDK.requestFeedListByCategoryIds(Arrays.asList(1000701l), null, currentPage, 20,feedListLoadResult);
         } else if (type == 4) {
-            VoiceDramaRequestHelper.requestVoiceDramaByIp(getApplicationContext(), currentPage, 20, feedListLoadResult);
+            boolean requestStarted = VoiceDramaRequestHelper.requestVoiceDramaBySelectedLanguages(currentPage, 20, feedListLoadResult);
+            if (!requestStarted) {
+                Logs.i(TAG, "loadMoreData-skip: selected language is empty");
+                isLoading = false;
+                hasMore = false;
+                if (currentPage == 1) {
+                    adapter.setData(Collections.emptyList());
+                }
+            }
         }
     }
 

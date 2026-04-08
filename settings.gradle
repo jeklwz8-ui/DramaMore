@@ -19,11 +19,17 @@ pluginManagement {
         maven {
             url 'https://artifact.bytedance.com/repository/pangle/'
         }
+        maven {
+            url 'https://jfrog.anythinktech.com/artifactory/overseas_sdk'
+        }
     }
 }
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        flatDir {
+            dirs "$rootDir/libs"
+        }
         google()
         mavenCentral()
 
@@ -35,6 +41,9 @@ dependencyResolutionManagement {
         }
         maven {
             url 'https://artifact.bytedance.com/repository/pangle/'
+        }
+        maven {
+            url 'https://jfrog.anythinktech.com/artifactory/overseas_sdk'
         }
     }
 }

@@ -29,6 +29,7 @@
 -keep class com.ss.texturerender.** {*;}
 -keep class com.ss.vcbkit.** {*;}
 -keep class com.bytedance.**{*;}
+-keep class com.bytedance.sdk.** { *; }
 -keep class com.pandora.ttlicense2.**{*;}
 -keep class com.pandora.common.applog.**{*;}
 -keep class com.pandora.vod.VodSDK {*;}

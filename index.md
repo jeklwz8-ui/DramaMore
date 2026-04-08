@@ -38,6 +38,10 @@ npm start
 - Contribution guidelines for authors and actors
 
 ## Update Log
+- 2026-04-08：已按 TopOn 官方 Android 接入要求补充 SDK 仓库源、TopOn Core/横幅/原生/插屏/激励/开屏依赖及 UnityAds、Pangle、AdMob、Tramini 适配器依赖，并将现有 Pangle 直连依赖固定到 `7.6.0.2`，避免继续使用 `+` 带来的版本漂移。
+- 2026-04-08：`App.java` 已新增 TopOn 初始化入口，加入主进程判断、Debug 日志开关以及空 `App Key` 兜底；`AndroidManifest.xml` 已补充网络权限、`org.apache.http.legacy`、AdMob `APPLICATION_ID` 以及 `AD_MANAGER_APP=true` 元数据。
+- 2026-04-08：`proguard-rules.pro` 已显式补充 `-keep class com.bytedance.sdk.** { *; }`；当前工程未开启 `shrinkResources`，因此本次无需额外放置 `res/raw/keep.xml`。
+- 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，当前工程构建通过；运行时仍需补充 `TOPON_APP_KEY` 后，继续在真机 Logcat 中确认 `anythink` 初始化日志与各适配器加载状态。
 - 2026-04-08：我的页“评价我们”评分弹窗的五颗星图标已替换为 `collect_1 / collect_2`，未选中显示 `collect_1`，选中后显示 `collect_2`。
 - 2026-04-08：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，评分弹窗星级图标替换为 `collect_1 / collect_2` 后的工程构建通过。
 - 2026-04-08：我的页“评价我们”评分弹窗已按设计图继续精修，增强了底部面板的深色渐变、顶部圆角、标题层级、星级尺寸、输入框和提交按钮的视觉比例与间距。

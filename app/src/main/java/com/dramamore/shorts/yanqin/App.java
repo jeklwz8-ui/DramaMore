@@ -1,11 +1,15 @@
 package com.dramamore.shorts.yanqin;
 
+import android.app.ActivityManager;
 import android.app.Application;
 import android.content.Context;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.Log;
 
+import com.anythink.core.api.ATSDK;
 import com.bytedance.sdk.openadsdk.api.init.PAGConfig;
 import com.bytedance.sdk.openadsdk.api.init.PAGSdk;
 import com.bytedance.sdk.shortplay.api.PSSDK;
@@ -20,6 +24,7 @@ public class App extends Application {
     public static final String BANNERAD_ID = "n69c9e5bebb98f";
 
     public static final String TOPON_APP_ID = "h69c9e50997ea1";
+    public static final String TOPON_APP_KEY = "";
     public static final String GOOGLE_APP_ID = "ca-app-pub-1656134190869494~4054416417";
     private static volatile boolean isPangleInitStarted = false;
     private static volatile boolean isPangleInitDone = false;
@@ -52,7 +57,48 @@ public class App extends Application {
 
         PSSDK.setEligibleAudience(true);
 
+        initTopOnSdk();
         preWarmPangleAdsSdk();
+    }
+
+    private void initTopOnSdk() {
+        if (!isMainProcess()) {
+            Log.d(TAG, "skip TopOn init in non-main process");
+            return;
+        }
+        if (TextUtils.isEmpty(TOPON_APP_ID) || TextUtils.isEmpty(TOPON_APP_KEY)) {
+            Log.w(TAG, "skip TopOn init because app id or app key is empty");
+            return;
+        }
+        ATSDK.setNetworkLogDebug(BuildConfig.DEBUG);
+        ATSDK.init(this, TOPON_APP_ID, TOPON_APP_KEY);
+        Log.d(TAG, "TopOn init requested");
+    }
+
+    private boolean isMainProcess() {
+        String currentProcessName = getCurrentProcessName();
+        return TextUtils.isEmpty(currentProcessName) || getPackageName().equals(currentProcessName);
+    }
+
+    private String getCurrentProcessName() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            return Application.getProcessName();
+        }
+        int currentPid = android.os.Process.myPid();
+        ActivityManager activityManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        if (activityManager == null) {
+            return null;
+        }
+        List<ActivityManager.RunningAppProcessInfo> processInfos = activityManager.getRunningAppProcesses();
+        if (processInfos == null) {
+            return null;
+        }
+        for (ActivityManager.RunningAppProcessInfo processInfo : processInfos) {
+            if (processInfo != null && processInfo.pid == currentPid) {
+                return processInfo.processName;
+            }
+        }
+        return null;
     }
 
     private void preWarmPangleAdsSdk() {

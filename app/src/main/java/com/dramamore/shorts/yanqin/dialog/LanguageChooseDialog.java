@@ -89,7 +89,7 @@ public class LanguageChooseDialog extends DialogFragment {
         String currentSetLanguage = ContentLanguageHelper.getSelectedContentLanguage();
         for (Map.Entry<String, String> entry : languageDisplayNames.entrySet()) {
             CheckBox checkBox = new CheckBox(view.getContext());
-            checkBox.setText(entry.getKey() + "/" + entry.getValue());
+            checkBox.setText(entry.getValue());
             checkBox.setTag(entry.getKey());
             checkBox.setTextColor(Color.WHITE);
             checkBox.setButtonDrawable(null);

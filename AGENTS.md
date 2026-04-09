@@ -542,3 +542,91 @@
 8. 最终输出必须包含“已对照 AGENTS.md 检查”的结论与剩余风险。
 
 ---
+
+## 15. 2026-04-09 实际代码扫描补充（高优先级）
+
+以下内容基于 2026-04-09 对当前仓库主工程代码的实际读取结果整理。后续让 Codex 执行任务时，若本节与前文描述有冲突，应优先以本节和真实代码为准。
+
+### 15.1 主工程与工作目录确认
+- Git 跟踪的主工程仍是根目录下的 `app/`。
+- 仓库根目录当前存在一个未跟踪的重复目录 `DramaMore/`，默认不要进入该目录改代码，避免误改副本。
+- 每次开始改动前，优先用 Git 跟踪文件确认目标文件是否位于主工程目录中。
+
+### 15.2 当前构建与依赖实际状态
+- `app/build.gradle` 当前已经接入 `com.anythink.sdk` 相关依赖，包括 `core-tpn`、`banner-tpn`、`nativead-tpn`、`interstitial-tpn`、`rewardedvideo-tpn`、`splash-tpn` 以及 UnityAds、Pangle、AdMob、Tramini 适配器。
+- `settings.gradle` 当前已经加入 ByteDance、Pangle、AnyThink 对应仓库源。
+- 当前工程虽然存在 Compose 依赖，但核心业务页面仍是传统 `Activity / Fragment / XML`。
+- 当前仓库中仍未看到正式 Firebase 工程接入文件：`app/` 下没有 `google-services.json`，Gradle 中也没有 `google-services`、`firebase-bom`、`firebase-analytics`、`firebase-crashlytics`、`firebase-messaging` 的正式声明。
+
+### 15.3 Application 与初始化链路实际状态
+- `App.java` 当前不是只有 `PSSDK + Pangle`，还已经存在 `TopOn` 初始化入口 `initTopOnSdk()`。
+- 但 `App.TOPON_APP_KEY` 当前仍为空，因此运行时会直接跳过 TopOn 初始化，不应误判为“已可正常出 TopOn 广告”。
+- `App.ensurePangleAdsSdkInit(...)` 已存在，且采用延迟预热方式初始化 Pangle Ads SDK。
+- 当前广告位常量状态：
+  - `App.REWARDAD_ID` 为空。
+  - `App.NATIVEAD_ID` 已填写。
+  - `App.BANNERAD_ID` 已填写。
+- 如需补广告位或中介初始化，优先在 `App.java` 原有逻辑上局部补齐，不要重写整条初始化链路。
+
+### 15.4 Manifest 与主页面实际状态
+- `AndroidManifest.xml` 当前已声明：
+  - `android.permission.POST_NOTIFICATIONS`
+  - `com.google.android.gms.permission.AD_ID`
+  - `com.google.android.gms.ads.APPLICATION_ID`
+  - `com.google.android.gms.ads.AD_MANAGER_APP`
+- `MainActivity` 当前已实现 Android 13+ 通知权限申请逻辑。
+- `MainActivity` 当前还没有：
+  - Firebase 留存检测
+  - FCM token 获取
+  - Firebase Analytics 统一埋点调用
+- 如需新增留存或 FCM，优先落在 `MainActivity`，不要破坏现有底部 Tab 切换和推荐页停播逻辑。
+
+### 15.5 首页、推荐页、关注页的真实代码特征
+- `HomeFragment` 当前已实现多区块缓存，且首页主 feed、Banner、热门、配音剧、收藏最多、动漫短剧缓存都已按当前内容语言隔离。
+- `RecommendFragment` 当前已在 `onPause()`、`onStop()`、`onHiddenChanged()`、`onDestroyView()` 等位置处理停播，且 `MainActivity` 切离推荐页时会调用 `forcePausePlayback()`。
+- `RecommendFragment` 当前还包含“语音筛选无数据时回退到全部内容”的兜底逻辑，修改推荐流请求时不要误删。
+- `FollowFragment` 当前并不是纯本地收藏页，而是 `PSSDK.requestFeedList(...)` 结果与 `shortPlay.isCollected`、本地历史播放集数混合组成 UI。
+- 若后续改关注页为纯本地收藏页，需要连同 `FollowDatabase / FollowDao / FollowDaoEntity` 的设计一并评估。
+
+### 15.6 播放页高频插入点与注意事项
+- `DramaPlayActivity` 中适合新增“进入播放页/剧集播放”埋点的位置：
+  - `onShortPlayPlayed(...)`
+  - `onVideoPlayCompleted(...)`
+- `DramaPlayActivity` 中现有广告相关核心方法：
+  - `loadRewardAd(...)`
+  - `loadPangleFeedAd()`
+  - `loadPangleBannerAd()`
+  - `showUnlockAd(...)`
+- 当前播放页的 Pangle Feed 预加载逻辑存在，但 `adCustomProvider` 中 `onObtainAdView(...)` 仍返回 `null`，说明原生信息流装配仍有半成品特征，修改时不要误判为“已完整可展示”。
+- 当前播放页构建 `IndexChooseDialog` 时已经做了 `isFinishing()` / `isDestroyed()` 检查；后续新增播放页弹窗时继续保持同级别防护。
+- 当前播放页已经承担历史写入、收藏同步、倍速/清晰度控制、广告解锁、自动连播等多条业务链，新增能力优先局部插入，不做整体结构重排。
+
+### 15.7 数据层真实情况
+- `HistoryDatabase` 与 `FollowDatabase` 都使用单线程 `ExecutorService`，数据库读写应继续走该模型。
+- `ShortUtils.historyInsert(...)` 是历史记录统一写入口。
+- `ShortUtils.followInsertOrDelete(...)` 是收藏记录统一写入口。
+- `HistoryActivity` 当前分页逻辑存在明确风险：
+  - `offset` 计算写成了 `(currentPage - 1) * offset` 的效果。
+  - 当前代码中未看到正常的 `currentPage++` 翻页推进。
+- 如果任务要修复历史分页，必须补充回归验证，防止历史列表重复、漏页或永远只取第一页。
+
+### 15.8 Firebase / 埋点任务的建议落点
+- 留存事件：
+  - 推荐挂在 `MainActivity.onResume()`。
+- 剧集事件：
+  - 推荐挂在 `DramaPlayActivity.onShortPlayPlayed(...)`
+  - 推荐挂在 `DramaPlayActivity.onVideoPlayCompleted(...)`
+- Banner 广告事件：
+  - 推荐挂在 `DramaPlayActivity.loadPangleBannerAd()`
+- 原生广告事件：
+  - 推荐挂在 `DramaPlayActivity.loadPangleFeedAd()`
+- 激励广告事件：
+  - 推荐挂在 `DramaPlayActivity.showUnlockAd(...)` 内的真实广告回调
+
+### 15.9 阅读代码后的执行建议
+- 当用户只说“接 Firebase”时，不要再假设仓库是完全空白广告工程；应先识别当前已存在的 `TopOn + Pangle + AdMob metadata + 通知权限` 基础设施，再做最小改动。
+- 当用户要求“接 TopOn”时，先确认是“补全现有半接入状态”还是“新增完整广告位调用”；当前仓库不是从零开始。
+- 当用户要求“修历史页”时，优先关注 `HistoryActivity` 的分页推进和偏移计算，不要先动 Room 表结构。
+- 当用户要求“给语言页加广告”时，优先复用 `activity_language.xml` 现有 `ad_container`，并保持语言切换确认按钮逻辑不受影响。
+
+---

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -99,19 +99,6 @@
             android:textColor="@android:color/white"
             android:textSize="14sp"
             android:textStyle="normal" />
-
-        <TextView
-            android:id="@+id/tv_voice_mode"
-            android:layout_width="wrap_content"
-            android:layout_height="24dp"
-            android:layout_marginEnd="8dp"
-            android:background="@drawable/bg_black_round_2dp"
-            android:gravity="center"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:text="不限"
-            android:textColor="@android:color/white"
-            android:textSize="12sp" />
     </LinearLayout>
 
     <SeekBar

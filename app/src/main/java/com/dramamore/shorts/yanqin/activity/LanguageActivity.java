@@ -12,7 +12,6 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import com.bytedance.sdk.shortplay.api.PSSDK;
 import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.dialog.LanguageChooseDialog;
 import com.dramamore.shorts.yanqin.utils.ContentLanguageHelper;
@@ -59,7 +58,7 @@ public class LanguageActivity extends AppCompatActivity {
         String currentSetLanguage = ContentLanguageHelper.getSelectedContentLanguage();
         for (Map.Entry<String, String> entry : languageDisplayNames.entrySet()) {
             CheckBox checkBox = new CheckBox(this);
-            checkBox.setText(entry.getKey() + "/" + entry.getValue());
+            checkBox.setText(entry.getValue());
             checkBox.setTag(entry.getKey());
             checkBox.setTextColor(Color.BLACK);
             checkBox.setPadding(0, 30, 0, 30);
@@ -77,7 +76,7 @@ public class LanguageActivity extends AppCompatActivity {
                 if (languageChangeListener != null) {
                     languageChangeListener.onContentLanguageChanged(checkedData);
                 } else {
-                    PSSDK.setContentLanguages(checkedData);
+                    ContentLanguageHelper.setSelectedContentLanguages(checkedData);
                 }
                 finish();
             }

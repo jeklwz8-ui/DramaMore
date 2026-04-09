@@ -29,6 +29,7 @@ import com.dramamore.shorts.yanqin.database.HistoryDatabase;
 import com.dramamore.shorts.yanqin.dialog.LanguageChooseDialog;
 import com.dramamore.shorts.yanqin.dialog.RateUsDialog;
 import com.dramamore.shorts.yanqin.entity.HistoryDaoEntity;
+import com.dramamore.shorts.yanqin.utils.ContentLanguageHelper;
 import com.dramamore.shorts.yanqin.utils.Logs;
 import com.dramamore.shorts.yanqin.utils.ShortUtils;
 import com.dramamore.shorts.yanqin.widget.RoundImageView;
@@ -118,7 +119,7 @@ public class MineFragment extends Fragment implements LanguageChooseDialog.Conte
     @Override
     public void onContentLanguageChanged(List<String> languages) {
         Logs.i(TAG, "onContentLanguageChanged: " + languages);
-        PSSDK.setContentLanguages(languages);
+        ContentLanguageHelper.setSelectedContentLanguages(languages);
 
         FragmentActivity activity = getActivity();
         if (activity == null) {

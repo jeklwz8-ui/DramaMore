@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,6 +18,7 @@ import android.os.Parcelable;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseIntArray;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -26,6 +28,7 @@ import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
@@ -75,13 +78,11 @@ import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
 import com.dramamore.shorts.yanqin.utils.PlayHistoryHelper;
 import com.dramamore.shorts.yanqin.utils.ShortUtils;
-import com.dramamore.shorts.yanqin.utils.VoiceModeHelper;
 import com.google.gson.Gson;
 import com.ss.ttvideoengine.Resolution;
 import com.ss.ttvideoengine.TTVideoEngineInterface;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -103,6 +104,8 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private static final float[] PLAY_SPEEDS = new float[]{1.0f, 1.5f, 2.0f};
     private static final String[] PLAY_SPEED_LABELS = new String[]{"1.0X", "1.5X", "2.0X"};
     private static final String DEFAULT_RESOLUTION_TEXT = "360P";
+    private static final int VOICE_ENTRY_DEFAULT_COLOR = Color.WHITE;
+    private static final int VOICE_ENTRY_ACTIVE_COLOR = 0xFFFF5252;
     private final List<PAGNativeAd> feedAds = new ArrayList<>();
     /**
      * 瀹歌尪袙闁夸胶娈戦崜褔娉?
@@ -120,7 +123,18 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private View playerAreaView;
     private View playBottomActionsView;
     private TextView bottomChooseIndexTitleView;
-    private TextView playAllView;
+    private View playAllView;
+    private View voiceTriggerView;
+    private TextView voiceDubView;
+    private TextView voiceOriginalView;
+    private ImageView voiceArrowView;
+    @Nullable
+    private PopupWindow voiceConfigPopupWindow;
+    @Nullable
+    private TextView voiceConfigPopupTextView;
+    @Nullable
+    private String cachedDubbedLanguage;
+    private long cachedDubbedLanguageShortPlayId = -1L;
     private View fixedChooseIndexView;
     private SeekBar bottomProgressBar;
     private CustomOverlayView customOverlayView;
@@ -133,7 +147,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private int lastBottomInset;
     private Runnable taskWhenResume;
     private int currentPlaySpeedIndex = 0;
-    private boolean isVoiceModeSwitching;
+    private boolean isVoiceDubExpanded;
     private int currentEpisodeIndex = -1;
     private boolean collectActionInProgress;
     private boolean isBottomProgressTracking;
@@ -142,11 +156,6 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private boolean hasBottomProgressFrame;
     @Nullable
     private IndexChooseDialog chooseIndexDialog;
-    private interface VoiceModeSwitchCallback {
-        void onSwitchApplied(int appliedMode);
-
-        void onSwitchFailed();
-    }
 
     public static void start(Context context, ShortPlay shortPlay) {
         start(context, shortPlay, 1, 0);
@@ -186,6 +195,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         Gson gson = new Gson();
         String json = gson.toJson(shortPlay);
         shortPlay = gson.fromJson(json, ShortPlay.class);
+        updateVoiceLanguageCache(shortPlay);
         //startFromIndex = intent.getIntExtra(EXTRA_SHORT_PLAY_INDEX, 1);
         //startFromSeconds = intent.getIntExtra(EXTRA_SHORT_PLAY_FROM_SECONDS, 0);
         if (shortPlay.episodes == null || shortPlay.episodes.isEmpty()) {
@@ -199,7 +209,12 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         fixedChooseIndexView = findViewById(R.id.ll_choose_index_fixed);
         bottomChooseIndexTitleView = findViewById(R.id.tv_choose_index_title_fixed);
         playAllView = findViewById(R.id.tv_play_all);
+        voiceTriggerView = findViewById(R.id.ll_voice_trigger);
+//        voiceDubView = findViewById(R.id.tv_voice_dub);
+        voiceOriginalView = findViewById(R.id.tv_voice_original);
+        voiceArrowView = findViewById(R.id.iv_voice_arrow);
         bottomProgressBar = findViewById(R.id.sb_play_progress);
+        updateVoiceDubEntryExpanded(false);
         if (bottomChooseIndexTitleView != null) {
             bottomChooseIndexTitleView.setText(buildChooseIndexTitle(shortPlay, 1));
         }
@@ -209,12 +224,26 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 showChooseIndexDialog();
             }
         });
-        playAllView.setOnClickListener(new View.OnClickListener() {
+        View.OnClickListener voiceEntryExpandClickListener = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                playEpisodeIndex(1);
+                if (isVoiceDubExpanded) {
+                    switchToOriginalVoiceIfNeeded();
+                    updateVoiceDubEntryExpanded(false);
+                } else {
+                    updateVoiceDubEntryExpanded(true);
+                }
             }
-        });
+        };
+        if (voiceTriggerView != null) {
+            voiceTriggerView.setOnClickListener(voiceEntryExpandClickListener);
+        }
+        if (voiceOriginalView != null) {
+            voiceOriginalView.setOnClickListener(voiceEntryExpandClickListener);
+        }
+        if (voiceArrowView != null) {
+            voiceArrowView.setOnClickListener(voiceEntryExpandClickListener);
+        }
         bottomProgressBar.setMax(1);
         bottomProgressBar.setProgress(0);
         bottomProgressBar.setVisibility(View.GONE);
@@ -278,6 +307,189 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 });
             }
         });
+    }
+
+    private void updateVoiceDubEntryExpanded(boolean expanded) {
+        if (expanded && isInImmersiveMode) {
+            expanded = false;
+        }
+        isVoiceDubExpanded = expanded;
+        if (voiceDubView != null) {
+            // Keep inline slot hidden; use outer-layer popup for the actual "配音" display.
+            voiceDubView.setVisibility(View.INVISIBLE);
+        }
+        if (expanded) {
+            showVoiceConfigPopup();
+        } else {
+            dismissVoiceConfigPopup();
+        }
+        if (voiceOriginalView != null) {
+            voiceOriginalView.setTextColor(expanded ? VOICE_ENTRY_ACTIVE_COLOR : VOICE_ENTRY_DEFAULT_COLOR);
+        }
+        if (voiceArrowView != null) {
+            voiceArrowView.setColorFilter(expanded ? VOICE_ENTRY_ACTIVE_COLOR : VOICE_ENTRY_DEFAULT_COLOR);
+        }
+    }
+
+    private void showVoiceConfigPopup() {
+        if (voiceTriggerView == null) {
+            return;
+        }
+        if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+            return;
+        }
+
+        // 定义固定的按钮大小（根据需要修改这里的 dp 值）
+        int popupWidth = DpUtils.dp2px(this, 60);
+        int popupHeight = DpUtils.dp2px(this, 35);
+
+
+        if (voiceConfigPopupWindow == null) {
+            TextView contentView = new TextView(this);
+            contentView.setText("配音");
+            contentView.setTextColor(Color.WHITE);
+            contentView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            contentView.setGravity(Gravity.CENTER);
+            contentView.setBackgroundResource(R.drawable.bg_black_round_button);
+            contentView.setWidth(popupWidth);
+            contentView.setHeight(popupHeight);
+            contentView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    switchToDubbedVoiceIfNeeded();
+                    updateVoiceDubEntryExpanded(false);
+                }
+            });
+            voiceConfigPopupTextView = contentView;
+            voiceConfigPopupWindow = new PopupWindow(contentView,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    true);
+            voiceConfigPopupWindow.setClippingEnabled(false);
+            voiceConfigPopupWindow.setTouchable(true);
+            voiceConfigPopupWindow.setOutsideTouchable(true);
+            voiceConfigPopupWindow.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            voiceConfigPopupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
+                @Override
+                public void onDismiss() {
+                    if (isVoiceDubExpanded) {
+                        updateVoiceDubEntryExpanded(false);
+                    }
+                }
+            });
+        }
+        if (voiceConfigPopupWindow.isShowing()) {
+            return;
+        }
+        updateVoiceConfigPopupButtonState();
+
+        int[] location = new int[2];
+        voiceTriggerView.getLocationOnScreen(location);
+        int anchorWidth = voiceTriggerView.getWidth();
+        if (anchorWidth <= 0) {
+            return;
+        }
+        voiceConfigPopupWindow.setWidth(popupWidth);
+        voiceConfigPopupWindow.setHeight(popupHeight);
+        int x = location[0] + (anchorWidth - popupWidth) / 2;
+        int y = location[1] - popupHeight - DpUtils.dp2px(this, 4);
+        View root = getWindow().getDecorView();
+        voiceConfigPopupWindow.showAtLocation(root, Gravity.NO_GRAVITY, x, y);
+    }
+
+    private void updateVoiceConfigPopupButtonState() {
+        if (voiceConfigPopupTextView == null) {
+            return;
+        }
+        boolean canSwitchToDubbed = canSwitchToDubbed(shortPlay);
+        voiceConfigPopupTextView.setEnabled(canSwitchToDubbed);
+        voiceConfigPopupTextView.setAlpha(canSwitchToDubbed ? 1f : 0.5f);
+        voiceConfigPopupTextView.setTextColor(canSwitchToDubbed ? Color.WHITE : 0xFF9E9E9E);
+    }
+
+    private void updateVoiceLanguageCache(@Nullable ShortPlay targetShortPlay) {
+        if (targetShortPlay == null) {
+            cachedDubbedLanguage = null;
+            cachedDubbedLanguageShortPlayId = -1L;
+            return;
+        }
+        if (cachedDubbedLanguageShortPlayId != targetShortPlay.id) {
+            cachedDubbedLanguage = null;
+            cachedDubbedLanguageShortPlayId = targetShortPlay.id;
+        }
+        if (!TextUtils.isEmpty(targetShortPlay.voiceLanguage)
+                && !TextUtils.isEmpty(targetShortPlay.originalLanguage)
+                && !TextUtils.equals(targetShortPlay.voiceLanguage, targetShortPlay.originalLanguage)) {
+            cachedDubbedLanguage = targetShortPlay.voiceLanguage;
+        }
+    }
+
+    private boolean canSwitchToDubbed(@Nullable ShortPlay targetShortPlay) {
+        return !TextUtils.isEmpty(resolveDubbedLanguage(targetShortPlay));
+    }
+
+    @Nullable
+    private String resolveDubbedLanguage(@Nullable ShortPlay targetShortPlay) {
+        if (targetShortPlay == null) {
+            return null;
+        }
+        if (cachedDubbedLanguageShortPlayId == targetShortPlay.id
+                && !TextUtils.isEmpty(cachedDubbedLanguage)
+                && !TextUtils.equals(cachedDubbedLanguage, targetShortPlay.originalLanguage)) {
+            return cachedDubbedLanguage;
+        }
+        if (!TextUtils.isEmpty(targetShortPlay.voiceLanguage)
+                && !TextUtils.isEmpty(targetShortPlay.originalLanguage)
+                && !TextUtils.equals(targetShortPlay.voiceLanguage, targetShortPlay.originalLanguage)) {
+            return targetShortPlay.voiceLanguage;
+        }
+        return null;
+    }
+
+    private void switchToOriginalVoiceIfNeeded() {
+        if (shortPlay == null || TextUtils.isEmpty(shortPlay.originalLanguage)) {
+            toast("当前短剧暂无原音");
+            return;
+        }
+        if (TextUtils.equals(shortPlay.voiceLanguage, shortPlay.originalLanguage)) {
+            return;
+        }
+        if (!TextUtils.isEmpty(shortPlay.voiceLanguage)) {
+            cachedDubbedLanguage = shortPlay.voiceLanguage;
+            cachedDubbedLanguageShortPlayId = shortPlay.id;
+        }
+        shortPlay.voiceLanguage = shortPlay.originalLanguage;
+        restartCurrentShortPlayForVoiceSwitch();
+    }
+
+    private void switchToDubbedVoiceIfNeeded() {
+        if (shortPlay == null) {
+            return;
+        }
+        String dubbedLanguage = resolveDubbedLanguage(shortPlay);
+        if (TextUtils.isEmpty(dubbedLanguage)) {
+            toast("当前短剧不支持配音");
+            return;
+        }
+        if (TextUtils.equals(shortPlay.voiceLanguage, dubbedLanguage)) {
+            return;
+        }
+        shortPlay.voiceLanguage = dubbedLanguage;
+        updateVoiceLanguageCache(shortPlay);
+        restartCurrentShortPlayForVoiceSwitch();
+    }
+
+    private void restartCurrentShortPlayForVoiceSwitch() {
+        int safeIndex = Math.max(playHistory.index, 1);
+        int safeSeconds = Math.max(playHistory.seconds, 0);
+        start(this, shortPlay, safeIndex, safeSeconds);
+        finish();
+    }
+
+    private void dismissVoiceConfigPopup() {
+        if (voiceConfigPopupWindow != null && voiceConfigPopupWindow.isShowing()) {
+            voiceConfigPopupWindow.dismiss();
+        }
     }
 
     @NonNull
@@ -387,10 +599,10 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
                 // 濮ｅ繋绔撮梿鍡楃磻婵鎸遍弨鐐閸ョ偠鐨熼敍灞藉讲閻劍娼电拋鏉跨秿閹绢厽鏂侀崢鍡楀蕉
                 Logs.i(TAG, "onShortPlayPlayed() called with: shortPlay = [" + shortPlay + "], index = [" + index + "]");
                 DramaPlayActivity.this.shortPlay = shortPlay;
+                updateVoiceLanguageCache(shortPlay);
                 currentEpisodeIndex = index;
                 syncCurrentCollectState(shortPlay);
                 markBottomProgressWaitingForFrame();
-                logCurrentVoiceType(shortPlay, "播放回调");
                 if (bottomChooseIndexTitleView != null) {
                     bottomChooseIndexTitleView.setText(buildChooseIndexTitle(shortPlay, index));
                 }
@@ -773,6 +985,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     protected void onPause() {
         super.onPause();
         dismissChooseIndexDialog();
+        updateVoiceDubEntryExpanded(false);
         Logs.i(TAG, "onPause: ");
     }
 
@@ -790,6 +1003,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     @Override
     protected void onDestroy() {
         dismissChooseIndexDialog();
+        dismissVoiceConfigPopup();
         super.onDestroy();
     }
 
@@ -849,187 +1063,6 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             return;
         }
         ChooseResolutionDialogActivity.start(this, REQUEST_CODE_CHOOSE_RESOLUTION, resolutions, currentResolution);
-    }
-
-    private void switchVoiceModeImmediately(int targetMode, int currentMode, @Nullable VoiceModeSwitchCallback callback) {
-        Logs.i(TAG, "[音频模式切换] 发起请求: 当前模式=" + VoiceModeHelper.getModeLabel(currentMode)
-                + "(" + currentMode + ")"
-                + ", 目标模式=" + VoiceModeHelper.getModeLabel(targetMode)
-                + "(" + targetMode + ")"
-                + ", 当前短剧ID=" + (shortPlay == null ? -1 : shortPlay.id)
-                + ", 当前识别类型=" + detectCurrentVoiceTypeLabel(shortPlay));
-
-        if (targetMode == currentMode) {
-            if (callback != null) {
-                callback.onSwitchFailed();
-            }
-            return;
-        }
-        if (isVoiceModeSwitching) {
-            toast("正在切换中，请稍候");
-            Logs.i(TAG, "[音频模式切换] 忽略本次请求: 上一次切换仍在进行中");
-            if (callback != null) {
-                callback.onSwitchFailed();
-            }
-            return;
-        }
-        if (targetMode == VoiceModeHelper.MODE_ALL) {
-            VoiceModeHelper.setMode(this, targetMode);
-            toast("已切换为" + VoiceModeHelper.getModeLabel(targetMode));
-            Logs.i(TAG, "[音频模式切换] 切换成功: 已应用模式=" + VoiceModeHelper.getModeLabel(targetMode));
-            if (callback != null) {
-                callback.onSwitchApplied(targetMode);
-            }
-            return;
-        }
-
-        if (shortPlay != null && isShortPlayMatchMode(shortPlay, targetMode)) {
-            VoiceModeHelper.setMode(this, targetMode);
-            toast("已切换为" + VoiceModeHelper.getModeLabel(targetMode));
-            Logs.i(TAG, "[音频模式切换] 切换成功: 当前视频已符合目标模式, 短剧ID=" + shortPlay.id
-                    + ", 识别类型=" + detectCurrentVoiceTypeLabel(shortPlay));
-            if (callback != null) {
-                callback.onSwitchApplied(targetMode);
-            }
-            return;
-        }
-
-        isVoiceModeSwitching = true;
-        toast("正在切换到" + VoiceModeHelper.getModeLabel(targetMode));
-        PSSDK.requestFeedList(1, 20, new PSSDK.FeedListResultListener() {
-            @Override
-            public void onSuccess(PSSDK.FeedListLoadResult<ShortPlay> result) {
-                runOnUiThreadIfNeeded(new Runnable() {
-                    @Override
-                    public void run() {
-                        isVoiceModeSwitching = false;
-                        if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
-                            return;
-                        }
-                        List<ShortPlay> finalList = VoiceModeHelper.filter(result == null ? null : result.dataList, targetMode);
-                        int sourceSize = result == null || result.dataList == null ? 0 : result.dataList.size();
-                        int filteredSize = finalList == null ? 0 : finalList.size();
-                        Logs.i(TAG, "[音频模式切换] 拉取结果: 原始数量=" + sourceSize + ", 过滤后数量=" + filteredSize);
-                        ShortPlay targetShortPlay = findSwitchTarget(finalList);
-                        if (targetShortPlay == null) {
-                            toast("暂无" + VoiceModeHelper.getModeLabel(targetMode) + "内容");
-                            Logs.i(TAG, "[音频模式切换] 切换失败: 没有可切换的目标短剧");
-                            if (callback != null) {
-                                callback.onSwitchFailed();
-                            }
-                            return;
-                        }
-                        VoiceModeHelper.setMode(DramaPlayActivity.this, targetMode);
-                        Logs.i(TAG, "[音频模式切换] 切换成功: 目标短剧ID=" + targetShortPlay.id
-                                + ", 目标识别类型=" + detectCurrentVoiceTypeLabel(targetShortPlay));
-                        if (callback != null) {
-                            callback.onSwitchApplied(targetMode);
-                        }
-                        start(DramaPlayActivity.this, targetShortPlay);
-                        finish();
-                    }
-                });
-            }
-
-            @Override
-            public void onFail(PSSDK.ErrorInfo errorInfo) {
-                runOnUiThreadIfNeeded(new Runnable() {
-                    @Override
-                    public void run() {
-                        isVoiceModeSwitching = false;
-                        if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
-                            return;
-                        }
-                        toast("切换失败，请稍后重试");
-                        Logs.i(TAG, "[音频模式切换] 切换失败: 请求异常 errorInfo=" + errorInfo);
-                        if (callback != null) {
-                            callback.onSwitchFailed();
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    private void runOnUiThreadIfNeeded(@NonNull Runnable runnable) {
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            runnable.run();
-        } else {
-            runOnUiThread(runnable);
-        }
-    }
-    @NonNull
-    private List<ShortPlay> filterByVoiceLanguage(@Nullable List<ShortPlay> source, @Nullable String language) {
-        if (source == null || source.isEmpty() || TextUtils.isEmpty(language)) {
-            return Collections.emptyList();
-        }
-        List<ShortPlay> result = new ArrayList<>();
-        for (ShortPlay item : source) {
-            if (item == null) {
-                continue;
-            }
-            if (TextUtils.equals(language, item.voiceLanguage)) {
-                result.add(item);
-            }
-        }
-        return result;
-    }
-
-    @Nullable
-    private ShortPlay findSwitchTarget(@Nullable List<ShortPlay> list) {
-        if (list == null || list.isEmpty()) {
-            return null;
-        }
-        if (shortPlay == null) {
-            return list.get(0);
-        }
-        long currentShortPlayId = shortPlay.id;
-        for (ShortPlay item : list) {
-            if (item == null) {
-                continue;
-            }
-            if (currentShortPlayId != item.id) {
-                return item;
-            }
-        }
-        return list.get(0);
-    }
-
-    private boolean isShortPlayMatchMode(@Nullable ShortPlay item, int mode) {
-        if (mode == VoiceModeHelper.MODE_ORIGINAL) {
-            return VoiceModeHelper.isOriginal(item);
-        }
-        if (mode == VoiceModeHelper.MODE_DUBBED) {
-            return VoiceModeHelper.isDubbed(item);
-        }
-        return true;
-    }
-
-    @NonNull
-    private String detectCurrentVoiceTypeLabel(@Nullable ShortPlay item) {
-        if (VoiceModeHelper.isOriginal(item)) {
-            return "原音";
-        }
-        if (VoiceModeHelper.isDubbed(item)) {
-            return "配音";
-        }
-        return "未知";
-    }
-
-    private void logCurrentVoiceType(@Nullable ShortPlay item, @NonNull String scene) {
-        if (item == null) {
-            Logs.i(TAG, "[音频类型识别] 场景=" + scene + ", shortPlay=null");
-            return;
-        }
-        String voiceLanguage = TextUtils.isEmpty(item.voiceLanguage) ? "null" : item.voiceLanguage;
-        String originalLanguage = TextUtils.isEmpty(item.originalLanguage) ? "null" : item.originalLanguage;
-        Logs.i(TAG, "[音频类型识别] 场景=" + scene
-                + ", 短剧ID=" + item.id
-                + ", voiceLanguage=" + voiceLanguage
-                + ", originalLanguage=" + originalLanguage
-                + ", 识别类型=" + detectCurrentVoiceTypeLabel(item)
-                + ", 当前保存模式=" + VoiceModeHelper.getModeLabel(VoiceModeHelper.getMode(this))
-                + "(" + VoiceModeHelper.getMode(this) + ")");
     }
 
     private float getCurrentPlaySpeed() {
@@ -1157,6 +1190,9 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             public void run() {
                 if (playBottomActionsView != null) {
                     playBottomActionsView.setVisibility(immersiveMode ? View.INVISIBLE : View.VISIBLE);
+                }
+                if (immersiveMode) {
+                    updateVoiceDubEntryExpanded(false);
                 }
                 refreshBottomProgressBarUi();
                 if (customOverlayView != null) {
@@ -1295,66 +1331,6 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
 
         }
     }
-
-//    private static class CustomProgressBar extends SeekBar implements PSSDK.IControlProgressBar, SeekBar.OnSeekBarChangeListener {
-//
-//        private ShortPlayFragment shortPlayFragment;
-//        private int index;
-//
-//        public CustomProgressBar(Context context) {
-//            super(context);
-//
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-//                setMaxHeight(DpUtils.dp2px(context, 2));
-//            }
-//            setPadding(DpUtils.dp2px(context,4),0,DpUtils.dp2px(context,4),0);
-//            setThumb(getResources().getDrawable(R.drawable.custom_thumb, null));
-//            Drawable drawable = ContextCompat.getDrawable(context, R.drawable.custom_seekbar_track);
-//            Rect bounds = getProgressDrawable().getBounds();
-//            setProgressDrawable(drawable);
-//            getProgressDrawable().setBounds(bounds);
-//            setOnSeekBarChangeListener(this);
-//        }
-//
-//        @Override
-//        public void onProgressChanged(int progressInSeconds, int durationInSeconds) {
-//            if (getMax() != durationInSeconds) {
-//                setMax(durationInSeconds);
-//            }
-//            setProgress(progressInSeconds);
-//        }
-//
-//        @Override
-//        public void onVideoPlayStateChanged(ShortPlay shortPlay, int i, int i1) {
-//
-//        }
-//
-//        @Override
-//        public PSSDK.ControlViewType getControlViewType() {
-//            return PSSDK.ControlViewType.PROGRESS_BAR;
-//        }
-//
-//        @Override
-//        public void bindItemData(ShortPlayFragment shortPlayFragment, ShortPlay shortPlay, int index) {
-//            this.shortPlayFragment = shortPlayFragment;
-//            this.index = index;
-//        }
-//
-//        @Override
-//        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-//
-//        }
-//
-//        @Override
-//        public void onStartTrackingTouch(SeekBar seekBar) {
-//
-//        }
-//
-//        @Override
-//        public void onStopTrackingTouch(SeekBar seekBar) {
-//            shortPlayFragment.startPlayIndexAndTimeSeconds(this.index, getProgress());
-//        }
-//    }
 
     private static class CustomErrorView extends TextView implements PSSDK.IControlView {
 
@@ -1815,12 +1791,11 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
     }
 
-        private class CustomOverlayView extends FrameLayout implements PSSDK.IControlView, DramaPlayActivity.ProgressChangeListener, ResolutionChangeListener {
+    private class CustomOverlayView extends FrameLayout implements PSSDK.IControlView, DramaPlayActivity.ProgressChangeListener, ResolutionChangeListener {
 
         private final View briefLayout;
         private final ImageView backIV;
         private final TextView dramaTitleTV;
-        private final TextView voiceModeTV;
         private final ImageView dramaCoverIV;
         private final View rightActionStackLayout;
         private final View likeActionView;
@@ -1845,8 +1820,6 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         private static final int MENU_TYPE_RESOLUTION = 2;
         private int currentExpandedMenuType = MENU_TYPE_NONE;
         private boolean isImmersiveMode;
-        @Nullable
-        private AlertDialog voiceModeDialog;
 //        private final TextView tvResolution;
 //        private final ImageView ivHd;
 
@@ -1864,14 +1837,6 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             });
 
             dramaTitleTV = findViewById(R.id.tv_overlay_drama_name);
-            voiceModeTV = findViewById(R.id.tv_voice_mode);
-            voiceModeTV.setText(VoiceModeHelper.getModeLabel(VoiceModeHelper.getMode(getContext())));
-            voiceModeTV.setOnClickListener(new OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    showVoiceModeDialog();
-                }
-            });
             dramaCoverIV = findViewById(R.id.iv_overlay_cover);
             rightActionStackLayout = findViewById(R.id.ll_right_action_stack);
             likeActionView = findViewById(R.id.ll_like_action);
@@ -1965,7 +1930,6 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             if (bottomChooseIndexTitleView != null) {
                 bottomChooseIndexTitleView.setText(chooseIndexTitle);
             }
-            logCurrentVoiceType(shortPlay, "覆盖层绑定");
             dramaTitleTV.setText(shortPlay.title);
             Glide.with(getContext())
                     .load(shortPlay.coverImage)
@@ -1973,7 +1937,6 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             bindCollectState(shortPlay);
             speedTV.setText(getCurrentPlaySpeedLabel());
             resolutionTV.setText(getResolutionButtonText(currentResolution));
-            voiceModeTV.setText(VoiceModeHelper.getModeLabel(VoiceModeHelper.getMode(getContext())));
             refreshResolutionMenuItems();
             refreshSpeedMenuItems();
             setExpandedMenuType(MENU_TYPE_NONE);
@@ -2029,55 +1992,8 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             });
         }
 
-        private void showVoiceModeDialog() {
-            Activity activity = DramaPlayActivity.this;
-            if (activity.isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed())) {
-                return;
-            }
-            final String[] items = new String[]{
-                    VoiceModeHelper.getModeLabel(VoiceModeHelper.MODE_ALL),
-                    VoiceModeHelper.getModeLabel(VoiceModeHelper.MODE_DUBBED),
-                    VoiceModeHelper.getModeLabel(VoiceModeHelper.MODE_ORIGINAL)
-            };
-            final int currentMode = VoiceModeHelper.getMode(getContext());
-            dismissVoiceModeDialogIfShowing();
-            voiceModeDialog = new AlertDialog.Builder(activity)
-                    .setTitle("选择音频模式")
-                    .setSingleChoiceItems(items, currentMode, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            if (which == currentMode) {
-                                dialog.dismiss();
-                                return;
-                            }
-                            dialog.dismiss();
-                            switchVoiceModeImmediately(which, currentMode, new VoiceModeSwitchCallback() {
-                                @Override
-                                public void onSwitchApplied(int appliedMode) {
-                                    voiceModeTV.setText(VoiceModeHelper.getModeLabel(appliedMode));
-                                }
-
-                                @Override
-                                public void onSwitchFailed() {
-                                    voiceModeTV.setText(VoiceModeHelper.getModeLabel(currentMode));
-                                }
-                            });
-                        }
-                    })
-                    .create();
-            voiceModeDialog.show();
-        }
-
-        private void dismissVoiceModeDialogIfShowing() {
-            if (voiceModeDialog != null && voiceModeDialog.isShowing()) {
-                voiceModeDialog.dismiss();
-            }
-            voiceModeDialog = null;
-        }
-
         @Override
         protected void onDetachedFromWindow() {
-            dismissVoiceModeDialogIfShowing();
             super.onDetachedFromWindow();
         }
 
@@ -2289,7 +2205,3 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
     }
 }
-
-
-
-

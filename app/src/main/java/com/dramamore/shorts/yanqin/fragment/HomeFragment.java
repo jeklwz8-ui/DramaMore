@@ -32,7 +32,6 @@ import com.dramamore.shorts.yanqin.adapter.HomeAdapter;
 import com.dramamore.shorts.yanqin.utils.ContentLanguageHelper;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
-import com.dramamore.shorts.yanqin.utils.VoiceModeHelper;
 import com.dramamore.shorts.yanqin.utils.VoiceDramaRequestHelper;
 
 public class HomeFragment extends Fragment {
@@ -421,8 +420,7 @@ public class HomeFragment extends Fragment {
 
                 boolean posted = postToUiIfAlive(() -> {
                     isLoading = false;
-                    int voiceMode = VoiceModeHelper.getMode(requireContext());
-                    List<ShortPlay> finalList = VoiceModeHelper.filter(result.dataList, voiceMode);
+                    List<ShortPlay> finalList = result.dataList;
                     if (adapter == null) {
                         return;
                     }

@@ -36,7 +36,6 @@ import com.dramamore.shorts.yanqin.dialog.IndexChooseDialog;
 import com.dramamore.shorts.yanqin.listener.IIndexChooseListener;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
-import com.dramamore.shorts.yanqin.utils.VoiceModeHelper;
 import com.ss.ttvideoengine.Resolution;
 import com.ss.ttvideoengine.TTVideoEngineInterface;
 
@@ -312,18 +311,8 @@ public class RecommendFragment extends Fragment {
                 public void run() {
                     isLoading = false;
                     int requestedPage = currentPage;
-                    int voiceMode = VoiceModeHelper.getMode(requireContext());
-                    List<ShortPlay> finalList = VoiceModeHelper.filter(result.dataList, voiceMode);
-                    boolean useAllModeFallback = false;
-                    if ((finalList == null || finalList.isEmpty())
-                            && voiceMode != VoiceModeHelper.MODE_ALL
-                            && result.dataList != null
-                            && !result.dataList.isEmpty()) {
-                        // Recommend page fallback: avoid black screen when voice filter has no matches.
-                        finalList = result.dataList;
-                        useAllModeFallback = true;
-                        Logs.i(TAG, "loadMoreData-fallback to MODE_ALL for recommend page, requestedPage=" + requestedPage);
-                    }
+                    List<ShortPlay> finalList = result.dataList;
+                    boolean useUnfilteredFallback = false;
                     hasMore = result.hasMore;
                     if (result.hasMore) {
                         currentPage++;
@@ -348,7 +337,7 @@ public class RecommendFragment extends Fragment {
                         } else {
                             feedListAdapter.appendData(finalList);
                         }
-                    } else if (result.hasMore && !useAllModeFallback) {
+                    } else if (result.hasMore && !useUnfilteredFallback) {
                         continuousFilteredEmptyPages++;
                         if (continuousFilteredEmptyPages <= MAX_CONTINUOUS_FILTERED_EMPTY_PAGES) {
                             loadMoreData();

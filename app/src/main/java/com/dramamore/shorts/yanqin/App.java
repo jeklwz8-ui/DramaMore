@@ -20,6 +20,7 @@ import java.util.List;
 
 public class App extends Application {
     private static final String TAG = "App";
+    private static App instance;
     public static final String REWARDAD_ID = "";
     public static final String NATIVEAD_ID = "n69c9e5dfe5c90";
     public static final String BANNERAD_ID = "n69c9e5bebb98f";
@@ -34,8 +35,13 @@ public class App extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        instance = this;
 
         init();
+    }
+
+    public static Context getAppContext() {
+        return instance == null ? null : instance.getApplicationContext();
     }
 
     private void init() {

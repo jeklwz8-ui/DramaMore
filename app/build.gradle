@@ -16,6 +16,10 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters 'arm64-v8a', 'armeabi-v7a'
+        }
     }
 
     signingConfigs {
@@ -48,15 +52,6 @@ android {
     }
     buildFeatures {
         compose true
-    }
-
-    defaultConfig {
-        ndk {
-            abiFilters 'arm64-v8a','armeabi-v7a'
-        }
-    }
-
-    buildFeatures {
         buildConfig true
     }
 }
@@ -82,28 +77,21 @@ dependencies {
     androidTestImplementation libs.androidx.ui.test.junit4
     debugImplementation libs.androidx.ui.tooling
     debugImplementation libs.androidx.ui.test.manifest
+
     implementation 'androidx.room:room-runtime:2.2.6'
     annotationProcessor "androidx.room:room-compiler:2.2.6"
 
-
-    implementation 'com.google.android.material:material:1.9.0' // 建议使用最新版本
-
     implementation 'com.squareup.okhttp3:okhttp:4.2.1'
-    implementation "androidx.viewpager2:viewpager2:1.0.0"
-    implementation 'com.github.bumptech.glide:glide:4.16.0'
-
-    implementation 'com.google.android.gms:play-services-ads-identifier:18.2.0'
-    implementation 'androidx.browser:browser:1.4.0'
-
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.3.61'
-
-    implementation 'com.bytedance.dramaverse:pssdk:1.9.0.0'
-
     implementation 'androidx.viewpager2:viewpager2:1.0.0'
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
 
-    // Pangle广告，便于测试信息流广告
+    implementation 'com.google.android.gms:play-services-ads-identifier:18.2.0'
+    implementation 'androidx.browser:browser:1.4.0'
+
+    implementation 'com.bytedance.dramaverse:pssdk:1.9.0.0'
+
+    // Pangle ads (direct integration in current project)
     implementation 'com.pangle.global:pag-sdk:7.6.0.2'
 
     implementation 'com.anythink.sdk:core-tpn:6.5.10'
@@ -120,24 +108,6 @@ dependencies {
     implementation 'com.google.android.gms:play-services-ads:24.4.0'
     implementation 'com.anythink.sdk:tramini-plugin-tpn:6.5.10'
 
-    // Demo里使用GSON测试ShortPlay的序列化兼容性
+    // ShortPlay serialization/deserialization
     implementation 'com.google.code.gson:gson:2.11.0'
-
-    // TOPON Core
-//    implementation 'com.anythink.sdk:core:6.5.50'
-
-    // Banner
-//    implementation 'com.anythink.sdk:banner:6.3.27'
-
-    // AdMob adapter
-//    implementation 'com.anythink.sdk:admob:6.3.27'
-
-//    implementation "com.google.android.gms:play-services-ads"
-
-    // Google Mobile Ads
-//    implementation 'com.google.android.gms:play-services-ads:6.3.27'
-
-
-
-//    implementation project(':demolib')
 }

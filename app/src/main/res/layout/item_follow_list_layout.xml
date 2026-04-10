@@ -8,8 +8,8 @@
 
     <com.dramamore.shorts.yanqin.widget.RoundImageView
         android:id="@+id/ic_cover"
-        android:layout_width="98dp"
-        android:layout_height="138dp"
+        android:layout_width="@dimen/follow_cover_width"
+        android:layout_height="@dimen/follow_cover_height"
         android:scaleType="centerCrop"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -17,8 +17,8 @@
 
     <View
         android:id="@+id/v_cover_bottom_mask"
-        android:layout_width="98dp"
-        android:layout_height="24dp"
+        android:layout_width="@dimen/follow_cover_width"
+        android:layout_height="@dimen/follow_cover_bottom_mask_height"
         android:background="@drawable/bottom_radius_bg"
         app:layout_constraintBottom_toBottomOf="@id/ic_cover"
         app:layout_constraintStart_toStartOf="@id/ic_cover" />

@@ -23,11 +23,13 @@ import com.dramamore.shorts.yanqin.fragment.FollowFragment;
 import com.dramamore.shorts.yanqin.fragment.HomeFragment;
 import com.dramamore.shorts.yanqin.fragment.MineFragment;
 import com.dramamore.shorts.yanqin.fragment.RecommendFragment;
+import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.FragmentUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG="MainActivity";
+    private static final int MIN_BOTTOM_SAFE_INSET_DP = 8;
     private Fragment homeFragment, recommendFragment, followFragment, profileFragment;
     private final ActivityResultLauncher<String> notificationPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted ->
@@ -39,18 +41,33 @@ public class MainActivity extends AppCompatActivity {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
         setContentView(R.layout.activity_main);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom);
-            return insets;
-        });
-
         BottomNavigationView navView = findViewById(R.id.bottom_navigation);
         navView.setOnApplyWindowInsetsListener(null);
         navView.setPadding(0, 0, 0, 0);
 
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            int consistentBottomInset = resolveBottomInset(systemBars.bottom);
+            v.setPadding(systemBars.left, 0, systemBars.right, 0);
+            navView.setPadding(
+                    navView.getPaddingLeft(),
+                    navView.getPaddingTop(),
+                    navView.getPaddingRight(),
+                    consistentBottomInset
+            );
+            return insets;
+        });
+
         requestNotificationPermissionIfNeeded();
         initFragment();
+    }
+
+    private int resolveBottomInset(int systemBottomInset) {
+        int minInset = DpUtils.dp2px(this, MIN_BOTTOM_SAFE_INSET_DP);
+        if (systemBottomInset <= 0) {
+            return minInset;
+        }
+        return Math.max(systemBottomInset, minInset);
     }
 
     private void requestNotificationPermissionIfNeeded() {

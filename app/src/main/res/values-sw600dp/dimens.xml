@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 首页头部相关尺寸 - 适配 600dp 宽度屏幕 (小平板) -->
+    <dimen name="home_header_container_height">480dp</dimen>
+    <dimen name="home_header_scrim_height">88dp</dimen>
+    <dimen name="home_search_height">44dp</dimen>
+    <dimen name="home_banner_height">396dp</dimen>
+
+    <!-- 关注页封面尺寸 -->
+    <dimen name="follow_cover_width">126dp</dimen>
+    <dimen name="follow_cover_height">178dp</dimen>
+    <dimen name="follow_cover_bottom_mask_height">30dp</dimen>
+
+    <!-- 通用间距 -->
+    <dimen name="spacing_tiny">5dp</dimen>
+    <dimen name="spacing_small">10dp</dimen>
+    <dimen name="spacing_medium">14dp</dimen>
+    <dimen name="spacing_normal">16dp</dimen>
+    <dimen name="spacing_large">20dp</dimen>
+    <dimen name="spacing_xlarge">28dp</dimen>
+
+    <!-- 图标尺寸 -->
+    <dimen name="icon_tiny">18dp</dimen>
+    <dimen name="icon_small">24dp</dimen>
+    <dimen name="icon_medium">30dp</dimen>
+    <dimen name="icon_large">44dp</dimen>
+
+    <!-- 文字大小 -->
+    <dimen name="text_size_tiny">12sp</dimen>
+    <dimen name="text_size_small">15sp</dimen>
+    <dimen name="text_size_normal">16sp</dimen>
+    <dimen name="text_size_medium">17sp</dimen>
+    <dimen name="text_size_large">19sp</dimen>
+    <dimen name="text_size_xlarge">20sp</dimen>
+
+    <!-- 圆角 -->
+    <dimen name="corner_radius_small">5dp</dimen>
+    <dimen name="corner_radius_medium">10dp</dimen>
+    <dimen name="corner_radius_large">16dp</dimen>
+
+    <!-- 卡片尺寸 -->
+    <dimen name="card_elevation">3dp</dimen>
+    <dimen name="card_corner_radius">10dp</dimen>
+
+    <!-- 底部导航栏 -->
+    <dimen name="bottom_nav_height">64dp</dimen>
+</resources>

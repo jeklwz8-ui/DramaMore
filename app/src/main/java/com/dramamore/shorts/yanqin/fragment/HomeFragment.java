@@ -32,6 +32,7 @@ import com.dramamore.shorts.yanqin.adapter.HomeAdapter;
 import com.dramamore.shorts.yanqin.utils.ContentLanguageHelper;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
+import com.dramamore.shorts.yanqin.utils.ScreenAdaptUtils;
 import com.dramamore.shorts.yanqin.utils.VoiceDramaRequestHelper;
 
 public class HomeFragment extends Fragment {
@@ -59,6 +60,7 @@ public class HomeFragment extends Fragment {
     private RecyclerView recyclerView;
     @Nullable
     private GridLayoutManager homeLayoutManager;
+    private int homeSpanCount = 3;
     private boolean isInitBannerData, isInitHotData, isInitVoiceData, isInitMostData, isInitCartoonData;
     private boolean isHeaderRequestScheduled = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -362,13 +364,14 @@ public class HomeFragment extends Fragment {
     private void initRecyclerView(View view) {
         recyclerView = view.findViewById(R.id.rv_home);
         recyclerView.setHasFixedSize(true);
-        recyclerView.addItemDecoration(new GridSpacingItemDecoration(3, DpUtils.dp2px(getActivity(), 10), false));
+        homeSpanCount = ScreenAdaptUtils.calcGridSpanCount(requireContext(), 120, 3, 6);
+        recyclerView.addItemDecoration(new GridSpacingItemDecoration(homeSpanCount, DpUtils.dp2px(getActivity(), 10), false));
         recyclerView.setItemAnimator(null);
 
         adapter = new HomeAdapter();
 
         // 1. 设置三列网格
-        homeLayoutManager = new GridLayoutManager(getActivity(), 3);
+        homeLayoutManager = new GridLayoutManager(getActivity(), homeSpanCount);
         // 2. 設置跨列邏輯
         homeLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
             @Override
@@ -376,7 +379,7 @@ public class HomeFragment extends Fragment {
                 // 判斷當前 position 是否為 Header
                 // 假設你的 Adapter 中第 0 位是 Header
                 if (adapter.getItemViewType(position) == HomeAdapter.TYPE_HEADER) {
-                    return 3; // 返回 3，代表佔滿 3 列（橫跨全螢幕）
+                    return homeSpanCount; // Header 始终占满整行
                 } else {
                     return 1; // 返回 1，代表只佔 1 列（正常顯示）
                 }

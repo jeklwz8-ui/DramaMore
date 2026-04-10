@@ -38,6 +38,20 @@ npm start
 - Contribution guidelines for authors and actors
 
 ## Update Log
+- 2026-04-10：已修复历史页数据库分页逻辑错误（`HistoryActivity`）：分页偏移改为 `offset=(page-1)*PAGE_SIZE`，修复了原先错误写法导致的重复/丢页；补齐分页推进 `currentPage` 更新与首屏空数据回填，避免列表卡住不再加载。
+- 2026-04-10：已修复内存泄漏风险（Handler/Runnable）：`DramaPlayActivity` 在 `onDestroy()` 中清理 `taskWhenResume`；`LotteryDialog` 与 `UnlockMoreDialog` 增加 `onDestroyView()` 统一移除 Handler 消息并释放按钮/监听器引用，同时在消息回调中增加空视图保护。
+- 2026-04-10：已补充广告资源释放：`DramaPlayActivity` 新增 `releaseAdResources()`，页面销毁时主动销毁 Banner 实例、移除 Banner View 父子绑定、清理 Reward listener 与预加载 Feed 队列；并限制 Feed 预加载队列上限，避免广告对象累积。
+- 2026-04-10：已清理依赖管理重复项：移除 `app/build.gradle` 中重复的 `viewpager2`、`glide`、`kotlin-stdlib-jdk7` 与重复 Material 声明，保留单一有效依赖；同时删除无效注释块，降低后续依赖冲突风险。
+- 2026-04-10：已处理本次修改范围内的注释乱码问题：`app/build.gradle` 注释统一改为 ASCII 可读注释，避免终端/编码不一致时出现乱码干扰维护。
+- 2026-04-10：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，本次“分页修复 + 泄漏治理 + 广告释放 + 依赖去重 + 注释乱码清理”改动编译通过。
+- 2026-04-10：已修复 `DramaPlayActivity.UnlockMoreDialog` 编译报错（`找不到符号: view`）：将解锁弹窗的视图绑定与点击监听从错误的 `onPause()` 迁移回 `onViewCreated(...)`，并在消息回调中增加 `okTV` 判空保护，避免生命周期切换时空引用风险。
+- 2026-04-10：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，本次“UnlockMoreDialog 作用域错误修复”改动编译通过。
+- 2026-04-10：已修复“手势全屏与三键导航底部视觉差异过大”问题：`MainActivity` 改为仅给底部导航栏应用底部 inset，不再把导航栏高度直接压到整页根布局；并新增最小底部安全间距（8dp）策略，减少不同导航模式下的视觉跳变。
+- 2026-04-10：`DramaPlayActivity` 已同步接入统一底部 inset 计算（含 8dp 最小安全间距），底部操作栏在手势/三键模式下保持更一致的视觉高度与触达区域，避免手势模式过贴边、三键模式变化过突兀。
+- 2026-04-10：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，本次“全屏与导航栏底部一致性修复”改动编译通过，未影响播放页主链路和首页 Tab 切换。
+- 2026-04-10：已完成主页面网格自适配改造：`HomeFragment`、`MoreActivity`、`HistoryActivity` 不再固定 3 列，改为按屏宽动态计算列数（最少 3 列、最大 6 列），并同步让首页 Header 跨列数跟随动态列数，提升大部分手机/大屏分辨率下的内容利用率。
+- 2026-04-10：已新增统一屏幕适配工具 `ScreenAdaptUtils`，并新增 `res/values/dimens.xml` 与 `res/values-sw600dp/dimens.xml` 分桶资源；首页头部关键高度（容器/Scrim/搜索栏/Banner）与关注页封面尺寸改为 `@dimen`，在 `sw600dp` 设备自动放大，避免固定 dp 在大屏下过小。
+- 2026-04-10：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，本次“动态列数 + 尺寸分桶”改动编译通过，未阻塞现有播放、列表加载与页面切换主流程。
 - 2026-04-09：已将语言弹窗横幅位切换到新应用 `Dranma` 下的 Banner PlacementId：`n69d769eec5b72`（原 `n69c9e5bebb98f` 与新 AppID 不匹配，导致 10003 Invalid app）。
 - 2026-04-09：根据 TopOn 后台截图已同步替换为同一应用参数：`TOPON_APP_ID=h69d767ba678cb`，`TOPON_APP_KEY=ab57de855ea5ddd9ea33e84413a77cb72`，用于修复“appid/appkey 不匹配导致 10001”问题。
 - 2026-04-09：已按最新配置补充 `TOPON_APP_KEY` 到 `AndroidManifest.xml`（`9c32a462dbc84b4736e42fe96d9286c5`），用于解除 TopOn 初始化被跳过的问题（此前日志显示 app key 为空）。

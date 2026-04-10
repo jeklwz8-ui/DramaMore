@@ -6,7 +6,7 @@
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="400dp"
+        android:layout_height="@dimen/home_header_container_height"
         android:layout_marginTop="8dp">
 
         <ImageView
@@ -18,14 +18,14 @@
 
         <View
             android:layout_width="match_parent"
-            android:layout_height="72dp"
+            android:layout_height="@dimen/home_header_scrim_height"
             android:layout_gravity="top"
             android:background="@drawable/bg_home_shared_scrim" />
 
         <FrameLayout
             android:id="@+id/fl_search"
             android:layout_width="match_parent"
-            android:layout_height="38dp"
+            android:layout_height="@dimen/home_search_height"
             android:layout_marginHorizontal="10dp"
             android:layout_marginTop="20dp"
             android:background="@drawable/bg_round_search"
@@ -64,7 +64,7 @@
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="323dp"
+            android:layout_height="@dimen/home_banner_height"
             android:layout_marginHorizontal="10dp"
             android:layout_marginTop="75dp"
             android:background="@drawable/bg_banner_rounded"

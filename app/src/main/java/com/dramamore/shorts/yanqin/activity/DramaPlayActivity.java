@@ -23,6 +23,7 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
@@ -35,10 +36,8 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.compose.ui.unit.Dp;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -101,6 +100,8 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private static final float MAX_VIDEO_SPEED = 3.0f; // 最大视频速度
     private static final int FLOATING_BOTTOM_ACTIONS_HEIGHT_DP = 56;
     private static final int FLOATING_PROGRESS_OVERLAY_OFFSET_DP = 2;
+    private static final int MIN_BOTTOM_SAFE_INSET_DP = 8;
+    private static final int MAX_PRELOADED_FEED_ADS = 3;
     private static final float[] PLAY_SPEEDS = new float[]{1.0f, 1.5f, 2.0f};
     private static final String[] PLAY_SPEED_LABELS = new String[]{"1.0X", "1.5X", "2.0X"};
     private static final String DEFAULT_RESOLUTION_TEXT = "360P";
@@ -115,6 +116,8 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     private ShortPlayFragment detailFragment;
     private PSSDK.VideoPlayInfo currentVideoPlayInfo;
     private View bannerView;
+    @Nullable
+    private PAGBannerAd currentBannerAd;
     private ShortPlay shortPlay;
     //private int startFromIndex;
     //private int startFromSeconds;
@@ -271,7 +274,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, 0, systemBars.right, 0);
             lastTopInset = systemBars.top;
-            lastBottomInset = systemBars.bottom;
+            lastBottomInset = resolveBottomInset(systemBars.bottom);
             applyBottomBarsLayout(lastBottomInset);
             applyTopOverlayInset(lastTopInset);
             return insets;
@@ -279,7 +282,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         ViewCompat.requestApplyInsets(playRoot);
         // Fallback for devices/skins where insets callback may be delayed.
         playRoot.post(() -> {
-            applyBottomBarsLayout(0);
+            applyBottomBarsLayout(resolveBottomInset(0));
             applyTopOverlayInset(0);
         });
 
@@ -784,6 +787,10 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     }*/
 
     private void loadRewardAd(PAGRewardedAdLoadCallback callback) {
+        if (TextUtils.isEmpty(App.REWARDAD_ID)) {
+            Logs.i(TAG, "skip load reward ad: REWARDAD_ID is empty");
+            return;
+        }
         PAGRewardedRequest rewardedRequest = new PAGRewardedRequest();
         PAGRewardedAd.loadAd(App.REWARDAD_ID, rewardedRequest, new PAGRewardedAdLoadCallback() {
             @Override
@@ -804,6 +811,10 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     }
 
     private void loadPangleFeedAd() {
+        if (TextUtils.isEmpty(App.NATIVEAD_ID)) {
+            Logs.i(TAG, "skip load pangle feed ad: NATIVEAD_ID is empty");
+            return;
+        }
         PAGNativeRequest request = new PAGNativeRequest();
         PAGNativeAd.loadAd(App.NATIVEAD_ID, request, new PAGNativeAdLoadListener() {
             @Override
@@ -814,12 +825,19 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             @Override
             public void onAdLoaded(PAGNativeAd pagNativeAd) {
                 Logs.i(TAG, "load pangle ad success, " + pagNativeAd);
+                if (feedAds.size() >= MAX_PRELOADED_FEED_ADS) {
+                    feedAds.remove(0);
+                }
                 feedAds.add(pagNativeAd);
             }
         });
     }
 
     private void loadPangleBannerAd() {
+        if (TextUtils.isEmpty(App.BANNERAD_ID)) {
+            Logs.i(TAG, "skip load pangle banner ad: BANNERAD_ID is empty");
+            return;
+        }
 
         PAGBannerRequest request = new PAGBannerRequest(PAGBannerSize.BANNER_W_320_H_50);
         PAGBannerAd.loadAd(App.BANNERAD_ID, request, new PAGBannerAdLoadListener() {
@@ -831,6 +849,14 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             @Override
             public void onAdLoaded(PAGBannerAd pagBannerAd) {
                 Logs.i(TAG, "onAdLoaded() called with: pagBannerAd = [" + pagBannerAd + "]");
+                if (currentBannerAd != null) {
+                    try {
+                        currentBannerAd.destroy();
+                    } catch (Throwable throwable) {
+                        Logs.i(TAG, "destroy previous banner ad failed: " + throwable.getMessage());
+                    }
+                }
+                currentBannerAd = pagBannerAd;
                 bannerView = pagBannerAd.getBannerView();
             }
         });
@@ -1004,7 +1030,36 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
     protected void onDestroy() {
         dismissChooseIndexDialog();
         dismissVoiceConfigPopup();
+        taskWhenResume = null;
+        releaseAdResources();
         super.onDestroy();
+    }
+
+    private void releaseAdResources() {
+        if (currentBannerAd != null) {
+            try {
+                currentBannerAd.destroy();
+            } catch (Throwable throwable) {
+                Logs.i(TAG, "release banner ad failed: " + throwable.getMessage());
+            }
+            currentBannerAd = null;
+        }
+        if (bannerView != null) {
+            ViewParent parent = bannerView.getParent();
+            if (parent instanceof ViewGroup) {
+                ((ViewGroup) parent).removeView(bannerView);
+            }
+            bannerView = null;
+        }
+        if (rewardedAd != null) {
+            try {
+                rewardedAd.setAdInteractionListener(null);
+            } catch (Throwable throwable) {
+                Logs.i(TAG, "clear rewarded listener failed: " + throwable.getMessage());
+            }
+            rewardedAd = null;
+        }
+        feedAds.clear();
     }
 
     private void dismissChooseIndexDialog() {
@@ -1157,6 +1212,14 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         if (customOverlayView != null) {
             customOverlayView.bindCollectState(shortPlay);
         }
+    }
+
+    private int resolveBottomInset(int systemBottomInset) {
+        int minInset = DpUtils.dp2px(this, MIN_BOTTOM_SAFE_INSET_DP);
+        if (systemBottomInset <= 0) {
+            return minInset;
+        }
+        return Math.max(systemBottomInset, minInset);
     }
 
     private void applyBottomBarsLayout(int bottomInset) {
@@ -1545,15 +1608,30 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
 
         @Override
+        public void onDestroyView() {
+            mHandler.removeCallbacksAndMessages(null);
+            okBtn = null;
+            listener = null;
+            super.onDestroyView();
+        }
+
+        @Override
         public boolean handleMessage(@NonNull Message msg) {
+            if (okBtn == null) {
+                return false;
+            }
+            View rootView = getView();
+            if (rootView == null) {
+                return false;
+            }
             switch (msg.what) {
                 case MSG_SHOW_LOTTERY_RESULT:
                     unlockType = new Random().nextInt(3) + 1;
                     okBtn.setText("Use it now(3s)");
 
-                    getView().findViewById(R.id.ll_lottery_result).setVisibility(View.VISIBLE);
-                    getView().findViewById(R.id.ll_lottery_tip).setVisibility(View.GONE);
-                    TextView resultTV = getView().findViewById(R.id.tv_lottery_result);
+                    rootView.findViewById(R.id.ll_lottery_result).setVisibility(View.VISIBLE);
+                    rootView.findViewById(R.id.ll_lottery_tip).setVisibility(View.GONE);
+                    TextView resultTV = rootView.findViewById(R.id.tv_lottery_result);
                     switch (unlockType) {
                         case UNLOCK_TYPE_COUNT_1:
                             resultTV.setText("1 episode unlocked");
@@ -1629,17 +1707,21 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         }
 
         @Override
-        public void onDismiss(@NonNull DialogInterface dialog) {
-            super.onDismiss(dialog);
+        public void onDestroyView() {
             mHandler.removeCallbacksAndMessages(null);
+            okTV = null;
+            listener = null;
+            super.onDestroyView();
         }
 
         @Override
         public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
             super.onViewCreated(view, savedInstanceState);
-
+            count = 3;
             TextView titleTV = view.findViewById(R.id.tv_title);
-            titleTV.setText("Congrats! Episode unlocked");
+            if (titleTV != null) {
+                titleTV.setText("Congrats! Episode unlocked");
+            }
 
             TextView descTV = view.findViewById(R.id.tv_desc);
             descTV.setText("Watch 1 more ad to unlock 2 more");
@@ -1675,6 +1757,9 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         @Override
         public boolean handleMessage(@NonNull Message msg) {
             if (msg.what == MSG_UPDATE_OK_TEXT) {
+                if (okTV == null) {
+                    return false;
+                }
                 okTV.setText("Watch rewards ad (" + count + "s)");
                 count--;
                 if (count < 0) {
@@ -1685,6 +1770,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
             }
             return false;
         }
+
     }
 
     public static class UnlockRetainDialog extends DialogFragment {
@@ -1946,7 +2032,7 @@ public class DramaPlayActivity extends AppFragmentActivity implements IIndexChoo
         void bindCollectState(@Nullable ShortPlay targetShortPlay) {
             boolean isCollected = targetShortPlay != null && targetShortPlay.isCollected;
             likeIconIV.setImageResource(isCollected ? R.drawable.liked : R.drawable.like);
-            likeTV.setText("收藏");
+            likeTV.setText("点赞");
             likeTV.setTextColor(isCollected ? speedResolutionActiveTextColor : likeButtonDefaultTextColor);
             boolean hasCollectTarget = targetShortPlay != null;
             likeActionView.setEnabled(hasCollectTarget && !collectActionInProgress);

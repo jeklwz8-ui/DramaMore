@@ -29,6 +29,7 @@ import com.dramamore.shorts.yanqin.adapter.MoreGridSpacingItemDecoration;
 import com.dramamore.shorts.yanqin.adapter.ShortPlayAdapter;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 import com.dramamore.shorts.yanqin.utils.Logs;
+import com.dramamore.shorts.yanqin.utils.ScreenAdaptUtils;
 import com.dramamore.shorts.yanqin.utils.VoiceDramaRequestHelper;
 
 public class MoreActivity extends AppCompatActivity {
@@ -40,6 +41,7 @@ public class MoreActivity extends AppCompatActivity {
     private boolean hasMore = false;
     private boolean isLoading = false;
     private ShortPlayAdapter adapter;
+    private int gridSpanCount = 3;
     private TextView tvTitle;
     private int type;
 
@@ -88,12 +90,13 @@ public class MoreActivity extends AppCompatActivity {
 
     private void initRecyclerView() {
         RecyclerView recyclerView = findViewById(R.id.rv_bottom);
-        recyclerView.addItemDecoration(new MoreGridSpacingItemDecoration(3, DpUtils.dp2px(this, 10), false));
+        gridSpanCount = ScreenAdaptUtils.calcGridSpanCount(this, 120, 3, 6);
+        recyclerView.addItemDecoration(new MoreGridSpacingItemDecoration(gridSpanCount, DpUtils.dp2px(this, 10), false));
 
         adapter = new ShortPlayAdapter();
 
         // 1. 设置三列网格
-        GridLayoutManager layoutManager = new GridLayoutManager(this, 3);
+        GridLayoutManager layoutManager = new GridLayoutManager(this, gridSpanCount);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setAdapter(adapter);
 

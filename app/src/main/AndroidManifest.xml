@@ -32,6 +32,11 @@
             android:name="TOPON_APP_KEY"
             android:value="ab57de855ea5ddd9ea33e84413a77cb72" />
 
+        <!-- TopOn 开屏广告位 ID（优先读取此配置） -->
+        <meta-data
+            android:name="TOPON_SPLASH_PLACEMENT_ID"
+            android:value="n69d870640b9e9" />
+
         <meta-data
             android:name="com.google.android.gms.ads.AD_MANAGER_APP"
             android:value="true" />
@@ -47,6 +52,11 @@
             android:theme="@style/Theme.FastShort" />
         <activity
             android:name=".activity.MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.FastShort" />
+        <activity
+            android:name=".activity.SplashActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.FastShort">

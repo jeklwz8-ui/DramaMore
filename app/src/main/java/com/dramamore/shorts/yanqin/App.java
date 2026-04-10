@@ -23,10 +23,12 @@ import java.util.List;
 public class App extends Application {
     private static final String TAG = "App";
     private static final String META_TOPON_APP_KEY = "TOPON_APP_KEY";
+    private static final String META_TOPON_SPLASH_PLACEMENT_ID = "TOPON_SPLASH_PLACEMENT_ID";
     private static App instance;
     public static final String REWARDAD_ID = "";
     public static final String NATIVEAD_ID = "n69c9e5dfe5c90";
     public static final String BANNERAD_ID = "n69d769eec5b72";
+    public static final String SPLASHAD_ID = "n69c9e57a7a573";
 
     public static final String TOPON_APP_ID = "h69d767ba678cb";
     public static final String TOPON_APP_KEY = "";
@@ -51,6 +53,19 @@ public class App extends Application {
         if (!TextUtils.isEmpty(TOPON_APP_KEY)) {
             return TOPON_APP_KEY.trim();
         }
+        String metaKey = getManifestMetaString(context, META_TOPON_APP_KEY);
+        return TextUtils.isEmpty(metaKey) ? "" : metaKey.trim();
+    }
+
+    public static String getTopOnSplashPlacementId(Context context) {
+        String metaPlacementId = getManifestMetaString(context, META_TOPON_SPLASH_PLACEMENT_ID);
+        if (!TextUtils.isEmpty(metaPlacementId)) {
+            return metaPlacementId.trim();
+        }
+        return TextUtils.isEmpty(SPLASHAD_ID) ? "" : SPLASHAD_ID.trim();
+    }
+
+    private static String getManifestMetaString(Context context, String key) {
         Context safeContext = context != null ? context.getApplicationContext() : getAppContext();
         if (safeContext == null) {
             return "";
@@ -61,13 +76,13 @@ public class App extends Application {
                     PackageManager.GET_META_DATA
             );
             if (appInfo != null && appInfo.metaData != null) {
-                String metaKey = appInfo.metaData.getString(META_TOPON_APP_KEY, "");
-                if (!TextUtils.isEmpty(metaKey)) {
-                    return metaKey.trim();
+                String metaValue = appInfo.metaData.getString(key, "");
+                if (!TextUtils.isEmpty(metaValue)) {
+                    return metaValue;
                 }
             }
         } catch (Exception e) {
-            Log.w(TAG, "read TOPON_APP_KEY from manifest failed: " + e.getMessage());
+            Log.w(TAG, "read " + key + " from manifest failed: " + e.getMessage());
         }
         return "";
     }

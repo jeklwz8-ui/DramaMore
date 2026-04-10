@@ -38,6 +38,16 @@ npm start
 - Contribution guidelines for authors and actors
 
 ## Update Log
+- 2026-04-10：已将开屏广告位切换为新应用 `Dranma` 下的 TopOn Splash PlacementId：`n69d870640b9e9`（原 `n69c9e57a7a573` 属于旧应用，导致 10003 Invalid app）。
+- 2026-04-10：开屏接入时机优化：新增独立启动页 `SplashActivity` 作为 Launcher，应用启动先请求并展示 TopOn 开屏（全屏容器承载），开屏关闭/失败/超时后再跳转 `MainActivity`，减少首页先渲染再覆盖开屏的体验抖动。
+- 2026-04-10：启动链路调整：`AndroidManifest.xml` 的 LAUNCHER 从 `MainActivity` 切换到 `SplashActivity`；`MainActivity` 移除开屏展示逻辑，恢复为纯首页容器职责，避免重复请求开屏广告。
+- 2026-04-10：新增 `activity_splash.xml` 作为开屏全屏承载布局；保留 `TOPON_SPLASH_PLACEMENT_ID` Manifest 配置读取能力，便于后台切换开屏位而不改业务代码。
+- 2026-04-10：`.gitignore` 已将 `DramaMore/` 修正为根路径忽略 `/DramaMore/`，避免误伤 `com/dramamore` 包路径下新增源码文件被错误忽略（如新建 `SplashActivity` 无法被 Git 跟踪）。
+- 2026-04-10：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，本次“Launcher 切换为 SplashActivity + 开屏前置展示链路”改动编译通过。
+- 2026-04-10：功能验证日志：已再次执行 `./gradlew.bat :app:assembleDebug`，确认 `.gitignore` 修正后工程构建仍通过。
+- 2026-04-10：新增 TopOn 开屏广告接入：`MainActivity` 已增加 `ATSplashAd` 启动展示链路（应用启动请求、广告就绪后全屏展示、展示/点击/关闭回调、失败与超时兜底），并保证开屏失败不阻塞首页进入。
+- 2026-04-10：开屏配置能力补充：`App.java` 新增 `TOPON_SPLASH_PLACEMENT_ID` 读取（Manifest 优先，常量兜底），`activity_main.xml` 新增全屏容器 `fl_splash_ad_container` 作为开屏广告承载层。
+- 2026-04-10：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，本次“TopOn 开屏广告启动接入 + 容器承载层 + 配置读取能力”改动编译通过。
 - 2026-04-10：已修复历史页数据库分页逻辑错误（`HistoryActivity`）：分页偏移改为 `offset=(page-1)*PAGE_SIZE`，修复了原先错误写法导致的重复/丢页；补齐分页推进 `currentPage` 更新与首屏空数据回填，避免列表卡住不再加载。
 - 2026-04-10：已修复内存泄漏风险（Handler/Runnable）：`DramaPlayActivity` 在 `onDestroy()` 中清理 `taskWhenResume`；`LotteryDialog` 与 `UnlockMoreDialog` 增加 `onDestroyView()` 统一移除 Handler 消息并释放按钮/监听器引用，同时在消息回调中增加空视图保护。
 - 2026-04-10：已补充广告资源释放：`DramaPlayActivity` 新增 `releaseAdResources()`，页面销毁时主动销毁 Banner 实例、移除 Banner View 父子绑定、清理 Reward listener 与预加载 Feed 队列；并限制 Feed 预加载队列上限，避免广告对象累积。

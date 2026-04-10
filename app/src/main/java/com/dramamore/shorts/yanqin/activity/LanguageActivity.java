@@ -2,8 +2,11 @@ package com.dramamore.shorts.yanqin.activity;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.CheckBox;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
 import androidx.activity.EdgeToEdge;
@@ -12,6 +15,11 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.anythink.banner.api.ATBannerListener;
+import com.anythink.banner.api.ATBannerView;
+import com.anythink.core.api.ATAdInfo;
+import com.anythink.core.api.AdError;
+import com.dramamore.shorts.yanqin.App;
 import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.dialog.LanguageChooseDialog;
 import com.dramamore.shorts.yanqin.utils.ContentLanguageHelper;
@@ -22,22 +30,25 @@ import java.util.List;
 import java.util.Map;
 
 public class LanguageActivity extends AppCompatActivity {
+    private static final String TAG = "LanguageActivity";
     private static final LinkedHashMap<String, String> languageDisplayNames = new LinkedHashMap<>();
 
     static {
         languageDisplayNames.put("zh_hans", "简体中文");
-        languageDisplayNames.put("zh_hant", "繁体中文");
-        languageDisplayNames.put("en", "英语");
-        languageDisplayNames.put("vi", "越南语");
-        languageDisplayNames.put("in", "印尼语");
-        languageDisplayNames.put("th", "泰语");
-        languageDisplayNames.put("ja", "日语");
-        languageDisplayNames.put("ko", "韩语");
-        languageDisplayNames.put("pt", "葡萄牙语");;
+        languageDisplayNames.put("zh_hant", "繁體中文");
+        languageDisplayNames.put("en", "English");
+        languageDisplayNames.put("vi", "Tiếng Việt");
+        languageDisplayNames.put("in", "Bahasa Indonesia");
+        languageDisplayNames.put("th", "ไทย");
+        languageDisplayNames.put("ja", "日本語");
+        languageDisplayNames.put("ko", "한국어");
+        languageDisplayNames.put("pt", "Português");
     }
 
     private final List<CheckBox> checkBoxes = new ArrayList<>();
     private LanguageChooseDialog.ContentLanguageChangeListener languageChangeListener;
+    private FrameLayout adContainer;
+    private ATBannerView topOnBannerView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +61,7 @@ public class LanguageActivity extends AppCompatActivity {
         });
 
         initView();
+        initTopOnBanner();
     }
 
     private void initView() {
@@ -96,5 +108,84 @@ public class LanguageActivity extends AppCompatActivity {
             }
         }
         return ContentLanguageHelper.DEFAULT_LANGUAGE;
+    }
+
+    private void initTopOnBanner() {
+        adContainer = findViewById(R.id.ad_container);
+        if (adContainer == null) {
+            return;
+        }
+        if (TextUtils.isEmpty(App.BANNERAD_ID)) {
+            adContainer.setVisibility(View.GONE);
+            Log.w(TAG, "skip TopOn banner: BANNERAD_ID is empty");
+            return;
+        }
+        // TopOn init in App.java requires both TOPON_APP_ID and TOPON_APP_KEY.
+        String topOnAppKey = App.getTopOnAppKey(this);
+        if (TextUtils.isEmpty(App.TOPON_APP_ID) || TextUtils.isEmpty(topOnAppKey)) {
+            adContainer.setVisibility(View.GONE);
+            Log.w(TAG, "skip TopOn banner: TOPON_APP_ID or TOPON_APP_KEY is empty. Please set TOPON_APP_KEY in AndroidManifest.");
+            return;
+        }
+
+        topOnBannerView = new ATBannerView(this);
+        topOnBannerView.setPlacementId(App.BANNERAD_ID);
+        topOnBannerView.setBannerAdListener(new ATBannerListener() {
+            @Override
+            public void onBannerLoaded() {
+                adContainer.setVisibility(View.VISIBLE);
+                Log.d(TAG, "TopOn banner loaded");
+            }
+
+            @Override
+            public void onBannerFailed(AdError adError) {
+                adContainer.setVisibility(View.GONE);
+                Log.w(TAG, "TopOn banner load failed: " + (adError == null ? "unknown" : adError.getFullErrorInfo()));
+            }
+
+            @Override
+            public void onBannerClicked(ATAdInfo atAdInfo) {
+                Log.d(TAG, "TopOn banner clicked");
+            }
+
+            @Override
+            public void onBannerShow(ATAdInfo atAdInfo) {
+                Log.d(TAG, "TopOn banner shown");
+            }
+
+            @Override
+            public void onBannerClose(ATAdInfo atAdInfo) {
+                Log.d(TAG, "TopOn banner closed");
+            }
+
+            @Override
+            public void onBannerAutoRefreshed(ATAdInfo atAdInfo) {
+                Log.d(TAG, "TopOn banner auto refreshed");
+            }
+
+            @Override
+            public void onBannerAutoRefreshFail(AdError adError) {
+                Log.w(TAG, "TopOn banner auto refresh failed: " + (adError == null ? "unknown" : adError.getFullErrorInfo()));
+            }
+        });
+        adContainer.removeAllViews();
+        adContainer.addView(topOnBannerView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+        ));
+        adContainer.setVisibility(View.INVISIBLE);
+        topOnBannerView.loadAd();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (topOnBannerView != null) {
+            topOnBannerView.destroy();
+            topOnBannerView = null;
+        }
+        if (adContainer != null) {
+            adContainer.removeAllViews();
+        }
+        super.onDestroy();
     }
 }

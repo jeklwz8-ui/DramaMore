@@ -27,6 +27,11 @@
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-1656134190869494~4054416417" />
 
+        <!-- TopOn App Key（请从 TopOn 控制台复制后填入） -->
+        <meta-data
+            android:name="TOPON_APP_KEY"
+            android:value="ab57de855ea5ddd9ea33e84413a77cb72" />
+
         <meta-data
             android:name="com.google.android.gms.ads.AD_MANAGER_APP"
             android:value="true" />

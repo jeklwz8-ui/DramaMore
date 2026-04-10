@@ -3,6 +3,8 @@ package com.dramamore.shorts.yanqin;
 import android.app.ActivityManager;
 import android.app.Application;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -20,12 +22,13 @@ import java.util.List;
 
 public class App extends Application {
     private static final String TAG = "App";
+    private static final String META_TOPON_APP_KEY = "TOPON_APP_KEY";
     private static App instance;
     public static final String REWARDAD_ID = "";
     public static final String NATIVEAD_ID = "n69c9e5dfe5c90";
-    public static final String BANNERAD_ID = "n69c9e5bebb98f";
+    public static final String BANNERAD_ID = "n69d769eec5b72";
 
-    public static final String TOPON_APP_ID = "h69c9e50997ea1";
+    public static final String TOPON_APP_ID = "h69d767ba678cb";
     public static final String TOPON_APP_KEY = "";
     public static final String GOOGLE_APP_ID = "ca-app-pub-1656134190869494~4054416417";
     private static volatile boolean isPangleInitStarted = false;
@@ -42,6 +45,31 @@ public class App extends Application {
 
     public static Context getAppContext() {
         return instance == null ? null : instance.getApplicationContext();
+    }
+
+    public static String getTopOnAppKey(Context context) {
+        if (!TextUtils.isEmpty(TOPON_APP_KEY)) {
+            return TOPON_APP_KEY.trim();
+        }
+        Context safeContext = context != null ? context.getApplicationContext() : getAppContext();
+        if (safeContext == null) {
+            return "";
+        }
+        try {
+            ApplicationInfo appInfo = safeContext.getPackageManager().getApplicationInfo(
+                    safeContext.getPackageName(),
+                    PackageManager.GET_META_DATA
+            );
+            if (appInfo != null && appInfo.metaData != null) {
+                String metaKey = appInfo.metaData.getString(META_TOPON_APP_KEY, "");
+                if (!TextUtils.isEmpty(metaKey)) {
+                    return metaKey.trim();
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "read TOPON_APP_KEY from manifest failed: " + e.getMessage());
+        }
+        return "";
     }
 
     private void init() {
@@ -76,12 +104,13 @@ public class App extends Application {
             Log.d(TAG, "skip TopOn init in non-main process");
             return;
         }
-        if (TextUtils.isEmpty(TOPON_APP_ID) || TextUtils.isEmpty(TOPON_APP_KEY)) {
+        String appKey = getTopOnAppKey(this);
+        if (TextUtils.isEmpty(TOPON_APP_ID) || TextUtils.isEmpty(appKey)) {
             Log.w(TAG, "skip TopOn init because app id or app key is empty");
             return;
         }
         ATSDK.setNetworkLogDebug(BuildConfig.DEBUG);
-        ATSDK.init(this, TOPON_APP_ID, TOPON_APP_KEY);
+        ATSDK.init(this, TOPON_APP_ID, appKey);
         Log.d(TAG, "TopOn init requested");
     }
 

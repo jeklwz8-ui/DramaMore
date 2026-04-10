@@ -38,6 +38,21 @@ npm start
 - Contribution guidelines for authors and actors
 
 ## Update Log
+- 2026-04-09：已将语言弹窗横幅位切换到新应用 `Dranma` 下的 Banner PlacementId：`n69d769eec5b72`（原 `n69c9e5bebb98f` 与新 AppID 不匹配，导致 10003 Invalid app）。
+- 2026-04-09：根据 TopOn 后台截图已同步替换为同一应用参数：`TOPON_APP_ID=h69d767ba678cb`，`TOPON_APP_KEY=ab57de855ea5ddd9ea33e84413a77cb72`，用于修复“appid/appkey 不匹配导致 10001”问题。
+- 2026-04-09：已按最新配置补充 `TOPON_APP_KEY` 到 `AndroidManifest.xml`（`9c32a462dbc84b4736e42fe96d9286c5`），用于解除 TopOn 初始化被跳过的问题（此前日志显示 app key 为空）。
+- 2026-04-09：TopOn 初始化链路修复：`App.java` 新增 `getTopOnAppKey(Context)`，支持从 `AndroidManifest.xml` 的 `meta-data TOPON_APP_KEY` 读取 App Key，不再仅依赖代码常量；`initTopOnSdk()` 改为使用解析后的 Key 初始化。
+- 2026-04-09：语言弹窗横幅请求链路补强：`LanguageChooseDialog` 改为使用 `Activity Context` 创建 `ATBannerView`，并增加 `placementId` 请求启动日志；当 `TOPON_APP_KEY` 缺失时输出明确日志提示，避免静默失败。
+- 2026-04-09：语言页横幅判定逻辑同步：`LanguageActivity` 的 TopOn Key 校验已改为与 `App.getTopOnAppKey(...)` 一致，减少“页面间行为不一致”问题。
+- 2026-04-09：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，本次“TopOn App Key 从 Manifest 读取 + 语言弹窗横幅请求链路补强”改动编译通过。
+- 2026-04-09：语言弹窗页 `dialog_config.xml` 已新增 `ad_container` 并接入 TopOn 横幅广告逻辑（`LanguageChooseDialog` 内创建 `ATBannerView`、设置监听、`loadAd()`），仅作用于语言弹窗，不改语言选择主流程。
+- 2026-04-09：语言弹窗广告生命周期已补齐：弹窗销毁时主动 `destroy()` 并清空容器；当 `BANNERAD_ID` 或 `TOPON_APP_ID/TOPON_APP_KEY` 缺失时自动隐藏广告容器，避免影响页面交互。
+- 2026-04-09：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，本次“语言弹窗页 ad_container 接入 TopOn 横幅”改动编译通过。
+- 2026-04-09：语言设置页 `ad_container` 已接入 TopOn 横幅显示逻辑（`ATBannerView`）：增加 banner 加载、展示、点击、自动刷新监听，加载失败时容器自动隐藏；页面销毁时主动 `destroy()` 并清理容器，避免泄漏。
+- 2026-04-09：广告初始化兜底：当 `BANNERAD_ID` 为空或 `TOPON_APP_ID/TOPON_APP_KEY` 缺失时，语言页会跳过横幅加载并隐藏广告容器，不影响语言选择主功能。
+- 2026-04-09：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，本次“语言页接入 TopOn 横幅显示逻辑”改动编译通过。
+- 2026-04-09：语言页面显示本地化优化：`LanguageActivity` 与 `LanguageChooseDialog` 的语言名称改为各语言对应本地写法（如 English、Tiếng Việt、Bahasa Indonesia、ไทย、日本語、한국어、Português），仅修改显示文案，不改任何功能逻辑。
+- 2026-04-09：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，本次“语言名称按对应字体显示”改动编译通过。
 - 2026-04-09：语言设置页面显示修复：`LanguageChooseDialog` 与 `LanguageActivity` 的语言项文案均改为仅显示语言名称（如“简体中文”），去除“语言代码/”前缀，仅调整 UI 展示，不改任何功能逻辑。
 - 2026-04-09：功能验证日志：已执行 `./gradlew.bat :app:assembleDebug`，本次“语言页去除字母和/显示”改动编译通过。
 - 2026-04-09：语言设置页显示优化：语言勾选项文案由“语言代码/语言名称”改为仅显示“语言名称”（去掉字母代码和“/”），仅调整前端展示，不改任何后台逻辑与语言存储逻辑。

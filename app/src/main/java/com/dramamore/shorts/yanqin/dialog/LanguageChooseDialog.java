@@ -2,6 +2,8 @@ package com.dramamore.shorts.yanqin.dialog;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,33 +20,43 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 
+import com.anythink.banner.api.ATBannerListener;
+import com.anythink.banner.api.ATBannerView;
+import com.anythink.core.api.ATAdInfo;
+import com.anythink.core.api.ATAdConst;
+import com.anythink.core.api.AdError;
 import com.bytedance.sdk.shortplay.api.PSSDK;
+import com.dramamore.shorts.yanqin.App;
 import com.dramamore.shorts.yanqin.R;
 import com.dramamore.shorts.yanqin.utils.ContentLanguageHelper;
 import com.dramamore.shorts.yanqin.utils.DpUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class LanguageChooseDialog extends DialogFragment {
+    private static final String TAG = "LanguageChooseDialog";
     private static final LinkedHashMap<String, String> languageDisplayNames = new LinkedHashMap<>();
 
     public void initLangStr(){
-        languageDisplayNames.put("zh_hans", getString(R.string.s_zh_hans));
-        languageDisplayNames.put("zh_hant", getString(R.string.s_zh_hant));
-        languageDisplayNames.put("en", getString(R.string.s_en));
-        languageDisplayNames.put("vi", getString(R.string.s_vi));
-        languageDisplayNames.put("in", getString(R.string.s_in));
-        languageDisplayNames.put("th", getString(R.string.s_th));
-        languageDisplayNames.put("ja", getString(R.string.s_ja));
-        languageDisplayNames.put("ko", getString(R.string.s_ko));
-        languageDisplayNames.put("pt", getString(R.string.s_pt));;
+        languageDisplayNames.put("zh_hans", "简体中文");
+        languageDisplayNames.put("zh_hant", "繁體中文");
+        languageDisplayNames.put("en", "English");
+        languageDisplayNames.put("vi", "Tiếng Việt");
+        languageDisplayNames.put("in", "Bahasa Indonesia");
+        languageDisplayNames.put("th", "ไทย");
+        languageDisplayNames.put("ja", "日本語");
+        languageDisplayNames.put("ko", "한국어");
+        languageDisplayNames.put("pt", "Português");
     }
 
     private final List<CheckBox> checkBoxes = new ArrayList<>();
     private ContentLanguageChangeListener languageChangeListener;
+    private FrameLayout adContainer;
+    private ATBannerView topOnBannerView;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -132,6 +144,88 @@ public class LanguageChooseDialog extends DialogFragment {
                 dismiss();
             }
         });
+
+        initTopOnBanner(view);
+    }
+
+    private void initTopOnBanner(@NonNull View rootView) {
+        adContainer = rootView.findViewById(R.id.ad_container);
+        if (adContainer == null) {
+            return;
+        }
+        if (TextUtils.isEmpty(App.BANNERAD_ID)) {
+            adContainer.setVisibility(View.GONE);
+            Log.w(TAG, "skip TopOn banner: BANNERAD_ID is empty");
+            return;
+        }
+        String topOnAppKey = App.getTopOnAppKey(requireContext());
+        if (TextUtils.isEmpty(App.TOPON_APP_ID) || TextUtils.isEmpty(topOnAppKey)) {
+            adContainer.setVisibility(View.GONE);
+            Log.w(TAG, "skip TopOn banner: TOPON_APP_ID or TOPON_APP_KEY is empty. Please set TOPON_APP_KEY in AndroidManifest.");
+            return;
+        }
+        if (getActivity() == null) {
+            adContainer.setVisibility(View.GONE);
+            return;
+        }
+
+        topOnBannerView = new ATBannerView(requireActivity());
+        topOnBannerView.setPlacementId(App.BANNERAD_ID);
+        Map<String, Object> localExtra = new HashMap<>();
+        localExtra.put(ATAdConst.KEY.AD_WIDTH, 320);
+        localExtra.put(ATAdConst.KEY.AD_HEIGHT, 50);
+        topOnBannerView.setLocalExtra(localExtra);
+        topOnBannerView.setBannerAdListener(new ATBannerListener() {
+            @Override
+            public void onBannerLoaded() {
+                if (adContainer != null) {
+                    adContainer.setVisibility(View.VISIBLE);
+                }
+                Log.d(TAG, "TopOn banner loaded");
+            }
+
+            @Override
+            public void onBannerFailed(AdError adError) {
+                if (adContainer != null) {
+                    adContainer.setVisibility(View.GONE);
+                }
+                Log.w(TAG, "TopOn banner load failed: " + (adError == null ? "unknown" : adError.getFullErrorInfo()));
+            }
+
+            @Override
+            public void onBannerClicked(ATAdInfo atAdInfo) {
+                Log.d(TAG, "TopOn banner clicked");
+            }
+
+            @Override
+            public void onBannerShow(ATAdInfo atAdInfo) {
+                Log.d(TAG, "TopOn banner shown");
+            }
+
+            @Override
+            public void onBannerClose(ATAdInfo atAdInfo) {
+                Log.d(TAG, "TopOn banner closed");
+            }
+
+            @Override
+            public void onBannerAutoRefreshed(ATAdInfo atAdInfo) {
+                Log.d(TAG, "TopOn banner auto refreshed");
+            }
+
+            @Override
+            public void onBannerAutoRefreshFail(AdError adError) {
+                Log.w(TAG, "TopOn banner auto refresh failed: " + (adError == null ? "unknown" : adError.getFullErrorInfo()));
+            }
+        });
+
+        adContainer.removeAllViews();
+        adContainer.addView(topOnBannerView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+        ));
+        adContainer.setVisibility(View.VISIBLE);
+        topOnBannerView.loadAd();
+        Log.d(TAG, "TopOn banner request started, placementId=" + App.BANNERAD_ID);
     }
 
     private void selectLanguage(@NonNull CheckBox selectedCheckBox) {
@@ -152,6 +246,19 @@ public class LanguageChooseDialog extends DialogFragment {
 
     public void setLanguageChangeListener(ContentLanguageChangeListener languageChangeListener) {
         this.languageChangeListener = languageChangeListener;
+    }
+
+    @Override
+    public void onDestroyView() {
+        if (topOnBannerView != null) {
+            topOnBannerView.destroy();
+            topOnBannerView = null;
+        }
+        if (adContainer != null) {
+            adContainer.removeAllViews();
+            adContainer = null;
+        }
+        super.onDestroyView();
     }
 
     public interface ContentLanguageChangeListener {
